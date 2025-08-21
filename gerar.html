@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Contrato de Empréstimo - Biblioteca</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; }
+    select, button { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #4CAF50; color: white; cursor: pointer; }
+    button:hover { background: #45a049; }
+    .contrato-wrapper { display: flex; flex-direction: column; gap: 20px; }
+    .contrato { background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.2); page-break-inside: avoid; }
+    .campo { margin: 10px 0; }
+    .assinatura { margin-top: 50px; }
+    .assinatura-line { border-top: 1px solid #000; width: 200px; margin-top: 50px; }
+    .imprimir { margin-top: 20px; text-align: center; }
+
+    /* Impressão: apenas contratos, duas cópias por folha */
+    @media print {
+      body * { visibility: hidden; }
+      .contrato-wrapper, .contrato-wrapper * { visibility: visible; }
+      .contrato-wrapper { position: absolute; top: 0; left: 0; width: 100%; display: flex; flex-direction: column; gap: 20px; }
+      .contrato { page-break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Gerar Contrato de Empréstimo</h1>
+
+  <label for="livroSelect">Selecione o livro:</label>
+  <select id="livroSelect"></select>
+  <button onclick="gerarContrato()">Gerar Contrato</button>
+
+  <div id="contratoWrapper" class="contrato-wrapper" style="display:none;"></div>
+
+  <div class="imprimir" style="display:none;">
+    <button onclick="imprimirContrato()">Imprimir Contrato</button>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbxeiQuQ-dan4BnICc0aUMRlTaghrW3A_rcXKrG4FqAjoePbO60vVJETuJERfO7faZvh/exec";
+
+    let livros = [];
+
+    async function carregarLivros() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        livros = data.slice(1); // Ignora cabeçalho
+        const select = document.getElementById("livroSelect");
+        select.innerHTML = "<option value=''>-- Selecione --</option>";
+        livros.forEach(livro => {
+          select.innerHTML += `<option value="${livro[0]}">${livro[1]} (${livro[4]})</option>`;
+        });
+      } catch(err) {
+        console.error("Erro ao carregar livros:", err);
+      }
+    }
+
+    function gerarContrato() {
+      const codigo = document.getElementById("livroSelect").value;
+      if(!codigo){ alert("Selecione um livro!"); return; }
+
+      const livro = livros.find(l => l[0] === codigo);
+      const prazo = livro[6] ? new Date(livro[6]).toLocaleDateString('pt-BR') : "___________________";
+
+      const contratoWrapper = document.getElementById("contratoWrapper");
+      contratoWrapper.style.display = "flex";
+      contratoWrapper.innerHTML = ""; // limpa contratos anteriores
+
+      // Cria duas cópias do contrato
+      for(let i=0; i<2; i++){
+        const contratoDiv = document.createElement("div");
+        contratoDiv.className = "contrato";
+        contratoDiv.innerHTML = `
+          <h2>Contrato de Empréstimo de Livro</h2>
+          <div class="campo"><strong>Livro:</strong> ${livro[1]}</div>
+          <div class="campo"><strong>Autor:</strong> ${livro[2]}</div>
+          <div class="campo"><strong>Código:</strong> ${livro[0]}</div>
+          <div class="campo"><strong>Data de Devolução:</strong> ${prazo}</div>
+          <p>O usuário se compromete a devolver o livro na data estipulada, em boas condições, sob pena de sanções previstas pela biblioteca.</p>
+          <div class="assinatura">
+            Assinatura do usuário:
+            <div class="assinatura-line"></div>
+          </div>
+          <div class="assinatura">
+            Assinatura do responsável pela biblioteca:
+            <div class="assinatura-line"></div>
+          </div>
+        `;
+        contratoWrapper.appendChild(contratoDiv);
+      }
+
+      document.querySelector('.imprimir').style.display = "block";
+    }
+
+    function imprimirContrato() {
+      window.print();
+    }
+
+    carregarLivros();
+  </script>
+</body>
+</html>
