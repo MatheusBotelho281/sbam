@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Biblioteca - Admin com ISBN</title>
+  <title>Biblioteca - Admin</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
     h1 { text-align: center; color: #333; }
@@ -13,14 +13,15 @@
     table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #f2f2f2; color: #333; }
-    input[type=text] { width: 150px; }
+    input[type=text], input[type=date] { width: 150px; }
+    .emprestimo { margin: 15px 0; text-align: center; }
   </style>
 </head>
 <body>
   <h1>Administração da Biblioteca</h1>
 
   <form id="formLivro">
-    <input type="text" id="isbn" placeholder="ISBN do Livro">
+    <input type="text" id="isbn" placeholder="ISBN (opcional)">
     <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br>
     <input type="text" id="nome" placeholder="Nome do Livro" required>
     <input type="text" id="autor" placeholder="Autor" required>
@@ -36,7 +37,6 @@
         <th>Autor</th>
         <th>Data</th>
         <th>Status</th>
-        <th>Usuário</th>
         <th>Prazo</th>
         <th>Ações</th>
       </tr>
@@ -44,39 +44,38 @@
     <tbody></tbody>
   </table>
 
+  <div class="emprestimo">
+    <input type="text" id="usuarioEmprestimo" placeholder="Nome do usuário para empréstimo">
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbyg6Bfy5gzmMU80hqKTEjvuF3RNiLPaXEReA6LSQ8ndqbhknTQFjUqWg_-d9-RAraiy/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbw9OlV43aJwwXC328uyEo1TGujvOJk9tE1AYhlXWdwXKZb3jO4c1LQt8rS9_lQCnrAc/exec";
+    const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
 
     function formatarDataISO(iso){
       if(!iso) return "";
       const d = new Date(iso);
-      const dia = String(d.getDate()).padStart(2,'0');
-      const mes = String(d.getMonth()+1).padStart(2,'0');
-      const ano = d.getFullYear();
-      return `${dia}/${mes}/${ano}`;
+      return d.toLocaleDateString('pt-BR');
     }
 
     async function carregarTabela(){
-      let res = await fetch(API_URL);
-      let data = await res.json();
-      let tbody = document.querySelector("#tabelaLivros tbody");
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      const tbody = document.querySelector("#tabelaLivros tbody");
       tbody.innerHTML = "";
-
       data.slice(1).forEach(livro=>{
         tbody.innerHTML += `
           <tr>
             <td><svg id="barcode-${livro[0]}"></svg></td>
             <td>${livro[1]}</td>
             <td>${livro[2]}</td>
-            <td>${formatarDataISO(livro[3])}</td>
+            <td>${livro[3] ? new Date(livro[3]).toISOString().split("T")[0] : ""}</td>
             <td>${livro[4]}</td>
-            <td>${livro[5]||""}</td>
             <td>${formatarDataISO(livro[6])}</td>
             <td>
-              <input type="text" id="user-${livro[0]}" placeholder="Nome do usuário">
-              <button onclick="atualizarStatus('${livro[0]}','Emprestado')">Emprestar</button>
-              <button onclick="atualizarStatus('${livro[0]}','Disponível')">Devolver</button>
+              <button onclick="emprestarLivro('${livro[0]}')">Emprestar</button>
+              <button onclick="devolverLivro('${livro[0]}')">Devolver</button>
             </td>
           </tr>`;
         JsBarcode(`#barcode-${livro[0]}`, livro[0], {
@@ -92,48 +91,70 @@
     async function buscarISBN(){
       const isbn = document.getElementById("isbn").value.trim();
       if(!isbn){ alert("Digite o ISBN"); return; }
-
       try{
-        const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${isbn}&format=json&jscmd=data`);
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`);
         const data = await res.json();
-        const livro = data[`ISBN:${isbn}`];
-        if(!livro){ alert("ISBN não encontrado"); return; }
-
+        if(!data.items || data.items.length===0){ alert("ISBN não encontrado"); return; }
+        const livro = data.items[0].volumeInfo;
         document.getElementById("nome").value = livro.title || "";
-        document.getElementById("autor").value = (livro.authors ? livro.authors.map(a=>a.name).join(", ") : "");
-        document.getElementById("data").value = livro.publish_date ? new Date(livro.publish_date).toISOString().split("T")[0] : "";
+        document.getElementById("autor").value = livro.authors ? livro.authors.join(", ") : "";
+        document.getElementById("data").value = livro.publishedDate ? new Date(livro.publishedDate).toISOString().split("T")[0] : "";
       }catch(err){
-        alert("Erro ao buscar ISBN");
         console.error(err);
+        alert("Erro ao buscar ISBN");
       }
     }
 
     async function adicionarLivro(){
-      let nome=document.getElementById("nome").value;
-      let autor=document.getElementById("autor").value;
-      let data=document.getElementById("data").value;
-      let codigo="LIV"+Date.now();
-
+      const nome = document.getElementById("nome").value.trim();
+      const autor = document.getElementById("autor").value.trim();
+      const data = document.getElementById("data").value;
+      if(!nome || !autor || !data){ alert("Preencha todos os campos"); return; }
+      const codigo = "LIV"+Date.now();
       await fetch(API_URL,{
         method:"POST",
-        body: JSON.stringify({action:"add",codigo,nome,autor,data,status:"Disponível"})
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({action:"add", codigo, nome, autor, data})
       });
       carregarTabela();
     }
 
-    async function atualizarStatus(codigo,status){
-      let usuario="";
-      if(status==="Emprestado"){
-        usuario=document.getElementById("user-"+codigo).value || "Desconhecido";
-      }
+    async function emprestarLivro(codigo){
+      const usuario = document.getElementById("usuarioEmprestimo").value.trim();
+      if(!usuario){ alert("Digite o nome do usuário"); return; }
+      const prazo = new Date();
+      prazo.setDate(prazo.getDate()+7);
       await fetch(API_URL,{
         method:"POST",
-        body: JSON.stringify({action:"update",codigo,status,usuario})
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          action:"updateStatus",
+          codigo,
+          status:"Emprestado",
+          usuario,
+          prazo: prazo.toISOString()
+        })
+      });
+      document.getElementById("usuarioEmprestimo").value = "";
+      carregarTabela();
+    }
+
+    async function devolverLivro(codigo){
+      await fetch(API_URL,{
+        method:"POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({
+          action:"updateStatus",
+          codigo,
+          status:"Disponível",
+          usuario:"",
+          prazo:""
+        })
       });
       carregarTabela();
     }
 
-    document.getElementById("formLivro").addEventListener("submit",e=>{
+    document.getElementById("formLivro").addEventListener("submit", e=>{
       e.preventDefault();
       adicionarLivro();
     });
