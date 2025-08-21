@@ -50,7 +50,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbw9OlV43aJwwXC328uyEo1TGujvOJk9tE1AYhlXWdwXKZb3jO4c1LQt8rS9_lQCnrAc/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbxkszWoiBBxOHsMWu4FQ7hys5tBF6biv04kFbRmofWgiR3QzTR6_Ck-1BqdJX4F8MWX/exec"; // Coloque a URL do seu Web App aqui
     const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
 
     function formatarDataISO(iso){
@@ -60,7 +60,7 @@
     }
 
     async function carregarTabela(){
-      const res = await fetch(API_URL);
+      const res = await fetch(`${API_URL}`);
       const data = await res.json();
       const tbody = document.querySelector("#tabelaLivros tbody");
       tbody.innerHTML = "";
@@ -110,12 +110,7 @@
       const autor = document.getElementById("autor").value.trim();
       const data = document.getElementById("data").value;
       if(!nome || !autor || !data){ alert("Preencha todos os campos"); return; }
-      const codigo = "LIV"+Date.now();
-      await fetch(API_URL,{
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({action:"add", codigo, nome, autor, data})
-      });
+      await fetch(`${API_URL}?action=add&nome=${encodeURIComponent(nome)}&autor=${encodeURIComponent(autor)}&data=${encodeURIComponent(data)}`);
       carregarTabela();
     }
 
@@ -124,33 +119,13 @@
       if(!usuario){ alert("Digite o nome do usuário"); return; }
       const prazo = new Date();
       prazo.setDate(prazo.getDate()+7);
-      await fetch(API_URL,{
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-          action:"updateStatus",
-          codigo,
-          status:"Emprestado",
-          usuario,
-          prazo: prazo.toISOString()
-        })
-      });
+      await fetch(`${API_URL}?action=updateStatus&codigo=${codigo}&status=Emprestado&usuario=${encodeURIComponent(usuario)}&prazo=${prazo.toISOString()}`);
       document.getElementById("usuarioEmprestimo").value = "";
       carregarTabela();
     }
 
     async function devolverLivro(codigo){
-      await fetch(API_URL,{
-        method:"POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-          action:"updateStatus",
-          codigo,
-          status:"Disponível",
-          usuario:"",
-          prazo:""
-        })
-      });
+      await fetch(`${API_URL}?action=updateStatus&codigo=${codigo}&status=Disponível&usuario=&prazo=`);
       carregarTabela();
     }
 
