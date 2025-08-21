@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Biblioteca - Catálogo</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; }
+    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.2); margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; color: #333; }
+    input, button { padding: 5px; margin: 3px; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #2196F3; color: white; cursor: pointer; }
+    button:hover { background: #1976D2; }
+    input[type=text] { width: 120px; }
+    .atrasado { color: red; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Catálogo de Livros</h1>
+
+  <table id="catalogo">
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nome</th>
+        <th>Autor</th>
+        <th>Status</th>
+        <th>Usuário</th>
+        <th>Prazo</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbyg6Bfy5gzmMU80hqKTEjvuF3RNiLPaXEReA6LSQ8ndqbhknTQFjUqWg_-d9-RAraiy/exec"; // coloque a URL do Apps Script
+
+    function formatarDataISO(iso){
+      if(!iso) return "";
+      const d = new Date(iso);
+      const dia = String(d.getDate()).padStart(2,'0');
+      const mes = String(d.getMonth()+1).padStart(2,'0');
+      const ano = d.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    async function carregarCatalogo(){
+      let res = await fetch(API_URL);
+      let data = await res.json();
+      let tbody = document.querySelector("#catalogo tbody");
+      tbody.innerHTML = "";
+
+      const hoje = new Date();
+
+      data.slice(1).forEach(livro=>{
+        let prazo = livro[6] ? new Date(livro[6].split("/").reverse().join("-")) : null;
+        let classePrazo = (prazo && prazo < hoje && livro[4]!=="Disponível") ? "atrasado" : "";
+
+        tbody.innerHTML += `
+          <tr>
+            <td><svg id="barcode-${livro[0]}"></svg></td>
+            <td>${livro[1]}</td>
+            <td>${livro[2]}</td>
+            <td>${livro[4]}</td>
+            <td>${livro[5]||""}</td>
+            <td class="${classePrazo}">${formatarDataISO(livro[6])}</td>
+            <td>
+              ${livro[4]==="Disponível" ? 
+                `<input type="text" id="reserva-${livro[0]}" placeholder="Seu nome">
+                 <button onclick="reservar('${livro[0]}')">Reservar</button>` 
+                : ""}
+            </td>
+          </tr>`;
+
+        JsBarcode(`#barcode-${livro[0]}`, livro[0], {
+          format: "CODE128",
+          lineColor: "#000",
+          width: 2,
+          height: 40,
+          displayValue: true
+        });
+      });
+    }
+
+    async function reservar(codigo){
+      let usuario=document.getElementById("reserva-"+codigo).value;
+      if(!usuario){ alert("Digite seu nome!"); return; }
+
+      await fetch(API_URL,{
+        method:"POST",
+        body: JSON.stringify({action:"update",codigo,status:"Reservado",usuario})
+      });
+      carregarCatalogo();
+    }
+
+    carregarCatalogo();
+  </script>
+</body>
+</html>
