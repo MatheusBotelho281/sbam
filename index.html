@@ -2,27 +2,27 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Catálogo de Livros</title>
+  <title>Biblioteca - Catálogo</title>
   <style>
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background: #eef2f7; color: #333; }
-    h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
-    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-radius: 5px; overflow: hidden; }
-    th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 14px; }
-    th { background-color: #3498db; color: white; text-transform: uppercase; letter-spacing: 0.5px; }
-    tr:nth-child(even) { background-color: #f9f9f9; }
-    input, button { padding: 6px 10px; margin: 3px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; }
-    button { background: #2ecc71; color: white; cursor: pointer; transition: 0.3s; }
-    button:hover { background: #27ae60; }
-    input[type=text] { width: 140px; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #eef2f7; }
+    h1 { text-align: center; color: #333; }
+    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 8px rgba(0,0,0,0.2); margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #2196F3; color: white; }
+    input, button { padding: 5px; margin: 3px; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #2196F3; color: white; cursor: pointer; }
+    button:hover { background: #1976D2; }
+    input[type=text] { width: 120px; }
     .atrasado { color: red; font-weight: bold; }
-    .info-status { font-weight: bold; }
-    .btn-login { margin-top: 20px; display: block; width: 150px; text-align: center; margin-left: auto; margin-right: auto; background: #e67e22; }
-    .btn-login:hover { background: #d35400; }
-    svg { margin: auto; display: block; }
+    .top-bar { text-align: center; margin-bottom: 15px; }
+    .top-bar button { background: #4CAF50; }
   </style>
 </head>
 <body>
   <h1>Catálogo de Livros</h1>
+  <div class="top-bar">
+    <button onclick="window.location='login.html'">Voltar ao Login</button>
+  </div>
 
   <table id="catalogo">
     <thead>
@@ -39,11 +39,9 @@
     <tbody></tbody>
   </table>
 
-  <button class="btn-login" onclick="window.location.href='login.html'">Voltar ao Login</button>
-
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxkszWoiBBxOHsMWu4FQ7hys5tBF6biv04kFbRmofWgiR3QzTR6_Ck-1BqdJX4F8MWX/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwV8Lg-BYYvdL29QHJpJPZpU99nnPqVtQOeYDF-AqN4hfovsCzPjhESR-xz_1n1ktKp/exec";
 
     function formatarDataISO(iso){
       if(!iso) return "";
@@ -55,55 +53,39 @@
     }
 
     async function carregarCatalogo(){
-      let res = await fetch(API_URL);
-      let data = await res.json();
-      let tbody = document.querySelector("#catalogo tbody");
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      const tbody = document.querySelector("#catalogo tbody");
       tbody.innerHTML = "";
-
       const hoje = new Date();
 
       data.slice(1).forEach(livro=>{
-        const prazo = livro[6] ? new Date(livro[6]) : null;
-        const status = livro[4] || "Disponível";
-        const usuario = livro[5] || "";
-        const classePrazo = (prazo && prazo < hoje && status !== "Disponível") ? "atrasado" : "";
+        let prazo = livro[6] ? new Date(livro[6].split("/").reverse().join("-")) : null;
+        let classePrazo = (prazo && prazo < hoje && livro[4]!=="Disponível") ? "atrasado" : "";
 
         tbody.innerHTML += `
           <tr>
             <td><svg id="barcode-${livro[0]}"></svg></td>
             <td>${livro[1]}</td>
             <td>${livro[2]}</td>
-            <td class="info-status">${status}</td>
-            <td>${usuario}</td>
+            <td>${livro[4]}</td>
+            <td>${livro[5]||""}</td>
             <td class="${classePrazo}">${formatarDataISO(livro[6])}</td>
             <td>
-              ${status === "Disponível" ? 
+              ${livro[4]==="Disponível" ? 
                 `<input type="text" id="reserva-${livro[0]}" placeholder="Seu nome">
                  <button onclick="reservar('${livro[0]}')">Reservar</button>` 
-                : `<span>${usuario ? "Reservado/Emprestado" : ""}</span>`}
+                : ""}
             </td>
           </tr>`;
-
-        JsBarcode(`#barcode-${livro[0]}`, livro[0], {
-          format: "CODE128",
-          lineColor: "#000",
-          width: 2,
-          height: 40,
-          displayValue: true
-        });
+        JsBarcode(`#barcode-${livro[0]}`, livro[0], {format:"CODE128",lineColor:"#000",width:2,height:40,displayValue:true});
       });
     }
 
     async function reservar(codigo){
-      const usuario = document.getElementById(`reserva-${codigo}`).value.trim();
+      const usuario=document.getElementById("reserva-"+codigo).value.trim();
       if(!usuario){ alert("Digite seu nome!"); return; }
-      const prazo = new Date();
-      prazo.setDate(prazo.getDate()+7);
-
-      await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({action:"update", codigo, status:"Reservado", usuario, prazo: prazo.toISOString()})
-      });
+      await fetch(`${API_URL}?action=updateStatus&codigo=${codigo}&status=Reservado&usuario=${encodeURIComponent(usuario)}`);
       carregarCatalogo();
     }
 
