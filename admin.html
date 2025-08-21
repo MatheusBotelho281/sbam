@@ -37,6 +37,7 @@
         <th>Autor</th>
         <th>Data</th>
         <th>Status</th>
+        <th>Usuário</th>
         <th>Prazo</th>
         <th>Ações</th>
       </tr>
@@ -72,6 +73,7 @@
             <td>${livro[2]}</td>
             <td>${livro[3] ? new Date(livro[3]).toISOString().split("T")[0] : ""}</td>
             <td>${livro[4]}</td>
+            <td>${livro[5] || ""}</td>
             <td>${formatarDataISO(livro[6])}</td>
             <td>
               <button onclick="emprestarLivro('${livro[0]}')">Emprestar</button>
