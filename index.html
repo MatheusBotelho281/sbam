@@ -27,11 +27,9 @@
   <table id="catalogo">
     <thead>
       <tr>
-        <th>Código</th>
         <th>Nome</th>
         <th>Autor</th>
         <th>Status</th>
-        <th>Usuário</th>
         <th>Prazo</th>
         <th>Ações</th>
       </tr>
@@ -65,11 +63,10 @@
 
         tbody.innerHTML += `
           <tr>
-            <td><svg id="barcode-${livro[0]}"></svg></td>
             <td>${livro[1]}</td>
             <td>${livro[2]}</td>
             <td>${livro[4]}</td>
-            <td>${livro[5]||""}</td>
+
             <td class="${classePrazo}">${formatarDataISO(livro[6])}</td>
             <td>
               ${livro[4]==="Disponível" ? 

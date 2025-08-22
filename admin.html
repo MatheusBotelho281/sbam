@@ -1,155 +1,248 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Biblioteca - Admin</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-    h1 { text-align: center; color: #333; }
-    form { margin-bottom: 20px; text-align: center; }
-    input, button { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #ccc; }
-    button { background: #4CAF50; color: white; cursor: pointer; }
-    button:hover { background: #45a049; }
-    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; color: #333; }
-    input[type=text], input[type=date] { width: 150px; }
-    .emprestimo { margin: 15px 0; text-align: center; }
-  </style>
-</head>
-<body>
-  <h1>Administração da Biblioteca</h1>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Biblioteca - Admin</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f5f5f5;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      form {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      input,
+      button {
+        padding: 8px;
+        margin: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        background: white;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #f2f2f2;
+        color: #333;
+      }
+      input[type="text"],
+      input[type="date"] {
+        width: 150px;
+      }
+      .emprestimo {
+        margin: 15px 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Administração da Biblioteca</h1>
 
-  <form id="formLivro">
-    <input type="text" id="isbn" placeholder="ISBN (opcional)">
-    <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br>
-    <input type="text" id="nome" placeholder="Nome do Livro" required>
-    <input type="text" id="autor" placeholder="Autor" required>
-    <input type="date" id="data" required>
-    <button type="submit">Adicionar Livro</button>
-  </form>
+    <form id="formLivro">
+      <input type="text" id="isbn" placeholder="ISBN (opcional)" />
+      <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br />
+      <input type="text" id="nome" placeholder="Nome do Livro" required />
+      <input type="text" id="autor" placeholder="Autor" required />
+      <input type="date" id="data" required />
+      <button type="submit">Adicionar Livro</button>
+    </form>
 
-  <table id="tabelaLivros">
-    <thead>
-      <tr>
-        <th>Código</th>
-        <th>Nome</th>
-        <th>Autor</th>
-        <th>Data</th>
-        <th>Status</th>
-        <th>Usuário</th>
-        <th>Prazo</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <table id="tabelaLivros">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Nome</th>
+          <th>Autor</th>
+          <th>Data</th>
+          <th>Status</th>
+          <th>Usuário</th>
+          <th>Prazo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-  <div class="emprestimo">
-    <input type="text" id="usuarioEmprestimo" placeholder="Nome do usuário para empréstimo">
-  </div>
-  
+    <div class="emprestimo">
+      <input
+        type="text"
+        id="usuarioEmprestimo"
+        placeholder="Nome do usuário para empréstimo"
+      />
+    </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxeiQuQ-dan4BnICc0aUMRlTaghrW3A_rcXKrG4FqAjoePbO60vVJETuJERfO7faZvh/exec";
-    const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <script>
+      const API_URL =
+        "https://script.google.com/macros/s/AKfycbxeiQuQ-dan4BnICc0aUMRlTaghrW3A_rcXKrG4FqAjoePbO60vVJETuJERfO7faZvh/exec";
+      const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
 
-    function formatarDataISO(iso){
-      if(!iso) return "";
-      const d = new Date(iso);
-      const dia = String(d.getDate()).padStart(2,'0');
-      const mes = String(d.getMonth()+1).padStart(2,'0');
-      const ano = d.getFullYear();
-      return `${dia}/${mes}/${ano}`;
-    }
+      function formatarDataISO(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const dia = String(d.getDate()).padStart(2, "0");
+        const mes = String(d.getMonth() + 1).padStart(2, "0");
+        const ano = d.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+      }
 
-    async function carregarTabela(){
-      const res = await fetch(API_URL);
-      const data = await res.json();
-      const tbody = document.querySelector("#tabelaLivros tbody");
-      tbody.innerHTML = "";
+      async function carregarTabela() {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        const tbody = document.querySelector("#tabelaLivros tbody");
+        tbody.innerHTML = "";
 
-      data.slice(1).forEach(livro=>{
-        tbody.innerHTML += `
+        data.slice(1).forEach((livro) => {
+          tbody.innerHTML += `
           <tr>
             <td><svg id="barcode-${livro[0]}"></svg></td>
             <td>${livro[1]}</td>
             <td>${livro[2]}</td>
             <td>${formatarDataISO(livro[3])}</td>
             <td>${livro[4]}</td>
-            <td>${livro[5]||""}</td>
+            <td>${livro[5] || ""}</td>
             <td>${formatarDataISO(livro[6])}</td>
             <td>
               <button onclick="emprestarLivro('${livro[0]}')">Emprestar</button>
               <button onclick="devolverLivro('${livro[0]}')">Devolver</button>
             </td>
           </tr>`;
-        JsBarcode(`#barcode-${livro[0]}`, livro[0], {
-          format: "CODE128",
-          lineColor: "#000",
-          width: 2,
-          height: 40,
-          displayValue: true
+          JsBarcode(`#barcode-${livro[0]}`, livro[0], {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2,
+            height: 40,
+            displayValue: true,
+          });
         });
-      });
-    }
-
-    async function buscarISBN(){
-      const isbn = document.getElementById("isbn").value.trim();
-      if(!isbn){ alert("Digite o ISBN"); return; }
-      try{
-        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`);
-        const data = await res.json();
-        if(!data.items || data.items.length===0){ alert("ISBN não encontrado"); return; }
-        const livro = data.items[0].volumeInfo;
-        document.getElementById("nome").value = livro.title || "";
-        document.getElementById("autor").value = livro.authors ? livro.authors.join(", ") : "";
-        document.getElementById("data").value = livro.publishedDate ? new Date(livro.publishedDate).toISOString().split("T")[0] : "";
-      }catch(err){
-        console.error(err);
-        alert("Erro ao buscar ISBN");
       }
-    }
 
-    async function adicionarLivro(){
-      const nome = document.getElementById("nome").value.trim();
-      const autor = document.getElementById("autor").value.trim();
-      const data = document.getElementById("data").value;
-      if(!nome || !autor || !data){ alert("Preencha todos os campos"); return; }
-      await fetch(`${API_URL}?action=add&nome=${encodeURIComponent(nome)}&autor=${encodeURIComponent(autor)}&data=${encodeURIComponent(data)}`);
+      async function buscarISBN() {
+        const isbn = document.getElementById("isbn").value.trim();
+        if (!isbn) {
+          alert("Digite o ISBN");
+          return;
+        }
+        try {
+          const res = await fetch(
+            `https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${GOOGLE_API_KEY}`
+          );
+          const data = await res.json();
+          if (!data.items || data.items.length === 0) {
+            alert("ISBN não encontrado");
+            return;
+          }
+          const livro = data.items[0].volumeInfo;
+          document.getElementById("nome").value = livro.title || "";
+          document.getElementById("autor").value = livro.authors
+            ? livro.authors.join(", ")
+            : "";
+          document.getElementById("data").value = livro.publishedDate
+            ? new Date(livro.publishedDate).toISOString().split("T")[0]
+            : "";
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao buscar ISBN");
+        }
+      }
+
+      async function adicionarLivro() {
+        const nome = document.getElementById("nome").value.trim();
+        const autor = document.getElementById("autor").value.trim();
+        const data = document.getElementById("data").value;
+        if (!nome || !autor || !data) {
+          alert("Preencha todos os campos");
+          return;
+        }
+        await fetch(
+          `${API_URL}?action=add&nome=${encodeURIComponent(
+            nome
+          )}&autor=${encodeURIComponent(autor)}&data=${encodeURIComponent(
+            data
+          )}`
+        );
+        carregarTabela();
+      }
+
+      async function emprestarLivro(codigo) {
+        const usuario = document
+          .getElementById("usuarioEmprestimo")
+          .value.trim();
+        if (!usuario) {
+          alert("Digite o nome do usuário");
+          return;
+        }
+        await fetch(
+          `${API_URL}?action=updateStatus&codigo=${codigo}&status=Emprestado&usuario=${encodeURIComponent(
+            usuario
+          )}`
+        );
+        document.getElementById("usuarioEmprestimo").value = "";
+        carregarTabela();
+      }
+
+      async function devolverLivro(codigo) {
+        await fetch(
+          `${API_URL}?action=updateStatus&codigo=${codigo}&status=Disponível&usuario=&prazo=`
+        );
+        carregarTabela();
+      }
+
+      document.getElementById("formLivro").addEventListener("submit", (e) => {
+        e.preventDefault();
+        adicionarLivro();
+      });
+
       carregarTabela();
-    }
-
-    async function emprestarLivro(codigo){
-      const usuario = document.getElementById("usuarioEmprestimo").value.trim();
-      if(!usuario){ alert("Digite o nome do usuário"); return; }
-      await fetch(`${API_URL}?action=updateStatus&codigo=${codigo}&status=Emprestado&usuario=${encodeURIComponent(usuario)}`);
-      document.getElementById("usuarioEmprestimo").value = "";
-      carregarTabela();
-    }
-
-    async function devolverLivro(codigo){
-      await fetch(`${API_URL}?action=updateStatus&codigo=${codigo}&status=Disponível&usuario=&prazo=`);
-      carregarTabela();
-    }
-
-    document.getElementById("formLivro").addEventListener("submit", e=>{
-      e.preventDefault();
-      adicionarLivro();
-    });
-
-    carregarTabela();
-  </script>
-  <a href="gerar.html" style="
-  display: inline-block;
-  padding: 8px 16px;
-  background-color: #4CAF50;
-  color: white;
-  text-decoration: none;
-  border-radius: 4px;
-  text-align: center;
-">Gerar Contrato</a>
-
-</body>
+    </script>
+    <a
+      href="gerar.html"
+      style="
+        display: inline-block;
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        text-align: center;
+      "
+      >Retirada</a
+    >
+    <a
+      href="retorno.html"
+      style="
+        display: inline-block;
+        padding: 8px 16px;
+        background-color: #4caf50;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        text-align: center;
+      "
+      >Devolução</a
+    >
+  </body>
 </html>
