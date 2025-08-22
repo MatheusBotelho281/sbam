@@ -52,7 +52,8 @@
       input[type="date"] {
         width: 150px;
       }
-      .emprestimo {
+      .emprestimo,
+      .pesquisa {
         margin: 15px 0;
         text-align: center;
       }
@@ -64,16 +65,29 @@
     <form id="formLivro">
       <input type="text" id="isbn" placeholder="ISBN (opcional)" />
       <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br />
+      <input type="text" id="estante" placeholder="Estante" required />
       <input type="text" id="nome" placeholder="Nome do Livro" required />
       <input type="text" id="autor" placeholder="Autor" required />
       <input type="date" id="data" required />
       <button type="submit">Adicionar Livro</button>
     </form>
 
+    <!-- Campo de pesquisa -->
+    <div class="pesquisa">
+      <input
+        type="text"
+        id="campoPesquisa"
+        placeholder="Pesquisar por código, estante, nome, autor..."
+        onkeyup="filtrarTabela()"
+        style="width: 50%"
+      />
+    </div>
+
     <table id="tabelaLivros">
       <thead>
         <tr>
           <th>Código</th>
+          <th>Estante</th>
           <th>Nome</th>
           <th>Autor</th>
           <th>Data</th>
@@ -97,12 +111,13 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script>
       const API_URL =
-        "https://script.google.com/macros/s/AKfycbxeiQuQ-dan4BnICc0aUMRlTaghrW3A_rcXKrG4FqAjoePbO60vVJETuJERfO7faZvh/exec";
+        "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
       const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
 
       function formatarDataISO(iso) {
-        if (!iso) return "";
+        if (!iso || iso === "Disponível" || iso === "Emprestado") return iso;
         const d = new Date(iso);
+        if (isNaN(d.getTime())) return "";
         const dia = String(d.getDate()).padStart(2, "0");
         const mes = String(d.getMonth() + 1).padStart(2, "0");
         const ano = d.getFullYear();
@@ -116,21 +131,31 @@
         tbody.innerHTML = "";
 
         data.slice(1).forEach((livro) => {
+          const codigo = livro[0];
+          const estante = livro[1] || "";
+          const nome = livro[2] || "";
+          const autor = livro[3] || "";
+          const dataPub = formatarDataISO(livro[4]);
+          const status = livro[5] || "Disponível";
+          const usuario = livro[6] || "";
+          const prazo = formatarDataISO(livro[7]);
+
           tbody.innerHTML += `
           <tr>
-            <td><svg id="barcode-${livro[0]}"></svg></td>
-            <td>${livro[1]}</td>
-            <td>${livro[2]}</td>
-            <td>${formatarDataISO(livro[3])}</td>
-            <td>${livro[4]}</td>
-            <td>${livro[5] || ""}</td>
-            <td>${formatarDataISO(livro[6])}</td>
+            <td><svg id="barcode-${codigo}"></svg></td>
+            <td>${estante}</td>
+            <td>${nome}</td>
+            <td>${autor}</td>
+            <td>${dataPub}</td>
+            <td>${status}</td>
+            <td>${usuario}</td>
+            <td>${prazo}</td>
             <td>
-              <button onclick="emprestarLivro('${livro[0]}')">Emprestar</button>
-              <button onclick="devolverLivro('${livro[0]}')">Devolver</button>
+              <button onclick="emprestarLivro('${codigo}')">Emprestar</button>
+              <button onclick="devolverLivro('${codigo}')">Devolver</button>
             </td>
           </tr>`;
-          JsBarcode(`#barcode-${livro[0]}`, livro[0], {
+          JsBarcode(`#barcode-${codigo}`, codigo, {
             format: "CODE128",
             lineColor: "#000",
             width: 2,
@@ -170,19 +195,20 @@
       }
 
       async function adicionarLivro() {
+        const estante = document.getElementById("estante").value.trim();
         const nome = document.getElementById("nome").value.trim();
         const autor = document.getElementById("autor").value.trim();
         const data = document.getElementById("data").value;
-        if (!nome || !autor || !data) {
+        if (!estante || !nome || !autor || !data) {
           alert("Preencha todos os campos");
           return;
         }
         await fetch(
-          `${API_URL}?action=add&nome=${encodeURIComponent(
-            nome
-          )}&autor=${encodeURIComponent(autor)}&data=${encodeURIComponent(
-            data
-          )}`
+          `${API_URL}?action=add&estante=${encodeURIComponent(
+            estante
+          )}&nome=${encodeURIComponent(nome)}&autor=${encodeURIComponent(
+            autor
+          )}&data=${encodeURIComponent(data)}`
         );
         carregarTabela();
       }
@@ -209,6 +235,20 @@
           `${API_URL}?action=updateStatus&codigo=${codigo}&status=Disponível&usuario=&prazo=`
         );
         carregarTabela();
+      }
+
+      // Função de filtro
+      function filtrarTabela() {
+        const filtro = document
+          .getElementById("campoPesquisa")
+          .value.toLowerCase();
+        const linhas = document
+          .getElementById("tabelaLivros")
+          .getElementsByTagName("tr");
+        for (let i = 1; i < linhas.length; i++) {
+          let texto = linhas[i].innerText.toLowerCase();
+          linhas[i].style.display = texto.includes(filtro) ? "" : "none";
+        }
       }
 
       document.getElementById("formLivro").addEventListener("submit", (e) => {

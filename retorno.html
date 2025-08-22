@@ -43,6 +43,7 @@
       <thead>
         <tr>
           <th>Código</th>
+          <th>Estante</th>
           <th>Nome</th>
           <th>Autor</th>
           <th>Status</th>
@@ -60,7 +61,7 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbxeiQuQ-dan4BnICc0aUMRlTaghrW3A_rcXKrG4FqAjoePbO60vVJETuJERfO7faZvh/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
     let livros = [];
     let listaRecibo = [];
 
@@ -80,9 +81,9 @@
       const livro = livros.find(l => l[0] === codigo);
       if(!livro){ alert("Código não encontrado!"); return; }
 
-      const status = livro[4]?.toLowerCase(); // Status atual
-      if(status !== "emprestado"){ // Só livros emprestados podem ser devolvidos
-        alert("Este livro não pode ser devolvido (status: " + livro[4] + ")");
+      const status = livro[5]?.toLowerCase(); // Status atual (ajustado para coluna correta)
+      if(status !== "emprestado"){ 
+        alert("Este livro não pode ser devolvido (status: " + livro[5] + ")");
         return;
       }
 
@@ -107,7 +108,8 @@
             <td>${livro[0]}</td>
             <td>${livro[1]}</td>
             <td>${livro[2]}</td>
-            <td>${livro[4]}</td>
+            <td>${livro[3]}</td>
+            <td>${livro[5]}</td>
             <td><button onclick="removerLivro('${livro[0]}')">Remover</button></td>
           </tr>
         `;
@@ -128,9 +130,10 @@
 
       listaRecibo.forEach(livro => {
         contratosHTML += `
-          <div class="campo"><strong>Livro:</strong> ${livro[1]}</div>
-          <div class="campo"><strong>Autor:</strong> ${livro[2]}</div>
+          <div class="campo"><strong>Livro:</strong> ${livro[2]}</div>
+          <div class="campo"><strong>Autor:</strong> ${livro[3]}</div>
           <div class="campo"><strong>Código:</strong> ${livro[0]}</div>
+          <div class="campo"><strong>Estante:</strong> ${livro[1]}</div>
           <hr>
         `;
       });
@@ -149,7 +152,6 @@
       contratoWrapper.innerHTML = contratosHTML;
       document.querySelector('.imprimir').style.display = "block";
 
-      // Atualiza planilha apenas no momento do clique em imprimir
       document.querySelector('.imprimir button').onclick = async function(){
         for (const livro of listaRecibo) {
           await fetch(API_URL, {
