@@ -60,60 +60,74 @@
     </style>
   </head>
   <body>
-    <h1>Administração da Biblioteca</h1>
+    <div id="online-content">
+      <h1>Administração da Biblioteca</h1>
 
-    <form id="formLivro">
-      <input type="text" id="isbn" placeholder="ISBN (opcional)" />
-      <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br />
-      <input type="text" id="estante" placeholder="Estante" required />
-      <input type="text" id="nome" placeholder="Nome do Livro" required />
-      <input type="text" id="autor" placeholder="Autor" required />
-      <input type="date" id="data" required />
-      <button type="submit">Adicionar Livro</button>
-    </form>
+      <form id="formLivro">
+        <input type="text" id="isbn" placeholder="ISBN (opcional)" />
+        <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br />
+        <input type="text" id="estante" placeholder="Estante" required />
+        <input type="text" id="nome" placeholder="Nome do Livro" required />
+        <input type="text" id="autor" placeholder="Autor" required />
+        <input type="date" id="data" required />
+        <button type="submit">Adicionar Livro</button>
+      </form>
 
-    <!-- Campo de pesquisa -->
-    <div class="pesquisa">
-      <input
-        type="text"
-        id="campoPesquisa"
-        placeholder="Pesquisar por código, estante, nome, autor..."
-        onkeyup="filtrarTabela()"
-        style="width: 50%"
-      />
+      <div class="pesquisa">
+        <input
+          type="text"
+          id="campoPesquisa"
+          placeholder="Pesquisar por código, estante, nome, autor..."
+          onkeyup="filtrarTabela()"
+          style="width: 50%"
+        />
+      </div>
+
+      <table id="tabelaLivros">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Estante</th>
+            <th>Nome</th>
+            <th>Autor</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Usuário</th>
+            <th>Prazo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="emprestimo">
+        <input
+          type="text"
+          id="usuarioEmprestimo"
+          placeholder="Nome do usuário para empréstimo"
+        />
+      </div>
+      
+      <a href="gerar.html" style="display: inline-block; padding: 8px 16px; background-color: #4caf50; color: white; text-decoration: none; border-radius: 4px; text-align: center;">Retirada</a>
+      <a href="retorno.html" style="display: inline-block; padding: 8px 16px; background-color: #4caf50; color: white; text-decoration: none; border-radius: 4px; text-align: center;">Devolução</a>
     </div>
 
-    <table id="tabelaLivros">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Estante</th>
-          <th>Nome</th>
-          <th>Autor</th>
-          <th>Data</th>
-          <th>Status</th>
-          <th>Usuário</th>
-          <th>Prazo</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-
-    <div class="emprestimo">
-      <input
-        type="text"
-        id="usuarioEmprestimo"
-        placeholder="Nome do usuário para empréstimo"
-      />
+    <div id="offline-message" style="display: none; text-align: center; padding: 20px;">
+      <h1>Funcionalidade Indisponível Offline</h1>
+      <p>Por favor, conecte-se à internet para acessar a área administrativa.</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <script>
-      const API_URL =
-        "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
+      if (!navigator.onLine) {
+        document.getElementById("online-content").style.display = "none";
+        document.getElementById("offline-message").style.display = "block";
+      }
+
+      const API_URL = "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
       const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
 
+      // ... (restante do seu JavaScript original de admin.html) ...
       function formatarDataISO(iso) {
         if (!iso || iso === "Disponível" || iso === "Emprestado") return iso;
         const d = new Date(iso);
@@ -237,7 +251,6 @@
         carregarTabela();
       }
 
-      // Função de filtro
       function filtrarTabela() {
         const filtro = document
           .getElementById("campoPesquisa")
@@ -256,33 +269,9 @@
         adicionarLivro();
       });
 
-      carregarTabela();
+      if(navigator.onLine) {
+        carregarTabela();
+      }
     </script>
-    <a
-      href="gerar.html"
-      style="
-        display: inline-block;
-        padding: 8px 16px;
-        background-color: #4caf50;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        text-align: center;
-      "
-      >Retirada</a
-    >
-    <a
-      href="retorno.html"
-      style="
-        display: inline-block;
-        padding: 8px 16px;
-        background-color: #4caf50;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        text-align: center;
-      "
-      >Devolução</a
-    >
   </body>
 </html>

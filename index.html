@@ -50,6 +50,8 @@
     button:hover { opacity: 0.9; }
 
     .atrasado { color: red; font-weight: bold; }
+    
+    #offlineIndicator { display: none; text-align: center; padding: 10px; background-color: #ffeb3b; color: #333; font-weight: bold; }
 
     /* Dark Mode */
     body.dark { background: #1e1e2f; color: #f5f5f5; }
@@ -88,6 +90,10 @@
     <button onclick="window.location='login.html'">Administração</button>
   </div>
 
+  <div id="offlineIndicator">
+    Você está visualizando uma versão offline do catálogo. As informações podem estar desatualizadas e as ações estão desabilitadas.
+  </div>
+
   <table id="catalogo">
     <thead>
       <tr>
@@ -104,6 +110,7 @@
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
+    const offlineIndicator = document.getElementById('offlineIndicator');
 
     // Dark Mode com ícones alternando
     const darkModeBtn = document.getElementById('darkModeBtn');
@@ -129,40 +136,68 @@
       return `${dia}/${mes}/${ano}`;
     }
 
+    function renderizarTabela(data, isOffline = false) {
+      const tbody = document.querySelector("#catalogo tbody");
+      tbody.innerHTML = "";
+      const hoje = new Date();
+      offlineIndicator.style.display = isOffline ? 'block' : 'none';
+
+      data.slice(1).forEach(livro=>{
+        const nome = livro[2];
+        const autor = livro[3];
+        const estante = livro[1];
+        const status = livro[5];
+        const prazo = livro[7];
+        const prazoData = prazo ? new Date(prazo) : null;
+        const classePrazo = (prazoData && prazoData < hoje && status !== "Disponível") ? "atrasado" : "";
+
+        let acoesHTML = 'Indisponível offline';
+        if (!isOffline) {
+          if (status === "Disponível") {
+            acoesHTML = `<input type="text" id="reserva-${livro[0]}" placeholder="Seu nome">
+                         <button onclick="reservar('${livro[0]}')">Reservar</button>`;
+          } else {
+            acoesHTML = "";
+          }
+        }
+
+        tbody.innerHTML += `
+          <tr>
+            <td data-label="Nome">${nome}</td>
+            <td data-label="Autor">${autor}</td>
+            <td data-label="Estante">${estante}</td>
+            <td data-label="Status">${status}</td>
+            <td data-label="Prazo" class="${classePrazo}">${formatarDataISO(prazo)}</td>
+            <td data-label="Ações">${acoesHTML}</td>
+          </tr>`;
+      });
+    }
+
+    function carregarVersaoOffline() {
+      const dadosLocais = localStorage.getItem('catalogoLocal');
+      if (dadosLocais) {
+        const data = JSON.parse(dadosLocais);
+        renderizarTabela(data, true);
+      } else {
+        offlineIndicator.innerHTML = 'Você está offline e não há catálogo local salvo. Conecte-se à internet para carregar os dados.';
+        offlineIndicator.style.display = 'block';
+        document.querySelector("#catalogo tbody").innerHTML = '<tr><td colspan="6">Não foi possível carregar os dados.</td></tr>';
+      }
+    }
+
     async function carregarCatalogo(){
-      try {
-        const res = await fetch(API_URL);
-        const data = await res.json();
-        const tbody = document.querySelector("#catalogo tbody");
-        tbody.innerHTML = "";
-        const hoje = new Date();
-
-        data.slice(1).forEach(livro=>{
-          const nome = livro[2];
-          const autor = livro[3];
-          const estante = livro[1];
-          const status = livro[5];
-          const prazo = livro[7];
-          const prazoData = prazo ? new Date(prazo) : null;
-          const classePrazo = (prazoData && prazoData < hoje && status !== "Disponível") ? "atrasado" : "";
-
-          tbody.innerHTML += `
-            <tr>
-              <td data-label="Nome">${nome}</td>
-              <td data-label="Autor">${autor}</td>
-              <td data-label="Estante">${estante}</td>
-              <td data-label="Status">${status}</td>
-              <td data-label="Prazo" class="${classePrazo}">${formatarDataISO(prazo)}</td>
-              <td data-label="Ações">
-                ${status==="Disponível" ? 
-                  `<input type="text" id="reserva-${livro[0]}" placeholder="Seu nome">
-                   <button onclick="reservar('${livro[0]}')">Reservar</button>` 
-                  : ""}
-              </td>
-            </tr>`;
-        });
-      } catch(err){
-        console.error("Erro ao carregar catálogo:", err);
+      if (navigator.onLine) {
+        try {
+          const res = await fetch(API_URL);
+          const data = await res.json();
+          localStorage.setItem('catalogoLocal', JSON.stringify(data));
+          renderizarTabela(data, false);
+        } catch(err){
+          console.error("Falha ao buscar dados online, carregando versão offline.", err);
+          carregarVersaoOffline();
+        }
+      } else {
+        carregarVersaoOffline();
       }
     }
 
@@ -172,6 +207,9 @@
       await fetch(`${API_URL}?action=updateStatus&codigo=${codigo}&status=Reservado&usuario=${encodeURIComponent(usuario)}`);
       carregarCatalogo();
     }
+
+    window.addEventListener('online', carregarCatalogo);
+    window.addEventListener('offline', carregarVersaoOffline);
 
     carregarCatalogo();
   </script>
