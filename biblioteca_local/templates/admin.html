@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Biblioteca - Admin</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f5f5f5;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      form {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      input,
+      button {
+        padding: 8px;
+        margin: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+      }
+      button {
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #45a049;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        background: white;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #f2f2f2;
+        color: #333;
+      }
+      input[type="text"],
+      input[type="date"] {
+        width: 150px;
+      }
+      .emprestimo,
+      .pesquisa {
+        margin: 15px 0;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="online-content">
+      <h1>Administração da Biblioteca</h1>
+
+      <form id="formLivro">
+        <input type="text" id="isbn" placeholder="ISBN (opcional)" />
+        <button type="button" onclick="buscarISBN()">Buscar ISBN</button><br />
+        <input type="text" id="estante" placeholder="Estante" required />
+        <input type="text" id="nome" placeholder="Nome do Livro" required />
+        <input type="text" id="autor" placeholder="Autor" required />
+        <input type="date" id="data" required />
+        <button type="submit">Adicionar Livro</button>
+      </form>
+
+      <div class="pesquisa">
+        <input
+          type="text"
+          id="campoPesquisa"
+          placeholder="Pesquisar por código, estante, nome, autor..."
+          onkeyup="filtrarTabela()"
+          style="width: 50%"
+        />
+      </div>
+
+      <table id="tabelaLivros">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Estante</th>
+            <th>Nome</th>
+            <th>Autor</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Usuário</th>
+            <th>Prazo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="emprestimo">
+        <input
+          type="text"
+          id="usuarioEmprestimo"
+          placeholder="Nome do usuário para empréstimo"
+        />
+      </div>
+
+      <a
+        href="gerar.html"
+        style="
+          display: inline-block;
+          padding: 8px 16px;
+          background-color: #4caf50;
+          color: white;
+          text-decoration: none;
+          border-radius: 4px;
+          text-align: center;
+        "
+        >Retirada</a
+      >
+      <a
+        href="retorno.html"
+        style="
+          display: inline-block;
+          padding: 8px 16px;
+          background-color: #4caf50;
+          color: white;
+          text-decoration: none;
+          border-radius: 4px;
+          text-align: center;
+        "
+        >Devolução</a
+      >
+    </div>
+
+    <div
+      id="offline-message"
+      style="display: none; text-align: center; padding: 20px"
+    >
+      <h1>Funcionalidade Indisponível Offline</h1>
+      <p>
+        Por favor, conecte-se à internet para acessar a área administrativa.
+      </p>
+    </div>
+
+    <script src="/static/js/JsBarcode.all.min.js"></script>
+    <script>
+      if (!navigator.onLine) {
+        document.getElementById("online-content").style.display = "none";
+        document.getElementById("offline-message").style.display = "block";
+      }
+
+      const API_URL = "/api/livros";
+      const GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs";
+
+      // ... (restante do seu JavaScript original de admin.html) ...
+      function formatarDataISO(iso) {
+        if (!iso || iso === "Disponível" || iso === "Emprestado") return iso;
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return "";
+        const dia = String(d.getDate()).padStart(2, "0");
+        const mes = String(d.getMonth() + 1).padStart(2, "0");
+        const ano = d.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+      }
+
+      async function carregarTabela() {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        const tbody = document.querySelector("#tabelaLivros tbody");
+        tbody.innerHTML = "";
+
+        data.slice(1).forEach((livro) => {
+          const codigo = livro[0];
+          const estante = livro[1] || "";
+          const nome = livro[2] || "";
+          const autor = livro[3] || "";
+          const dataPub = formatarDataISO(livro[4]);
+          const status = livro[5] || "Disponível";
+          const usuario = livro[6] || "";
+          const prazo = formatarDataISO(livro[7]);
+
+          tbody.innerHTML += `
+          <tr>
+            <td><svg id="barcode-${codigo}"></svg></td>
+            <td>${estante}</td>
+            <td>${nome}</td>
+            <td>${autor}</td>
+            <td>${dataPub}</td>
+            <td>${status}</td>
+            <td>${usuario}</td>
+            <td>${prazo}</td>
+            <td>
+              <button onclick="emprestarLivro('${codigo}')">Emprestar</button>
+              <button onclick="devolverLivro('${codigo}')">Devolver</button>
+            </td>
+          </tr>`;
+          JsBarcode(`#barcode-${codigo}`, codigo, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2,
+            height: 40,
+            displayValue: true,
+          });
+        });
+      }
+
+      async function buscarISBN() {
+        const isbn = document.getElementById("isbn").value.trim();
+        if (!isbn) {
+          alert("Digite o ISBN");
+          return;
+        }
+        try {
+          // Chama o nosso backend, que por sua vez chama a API do Google
+          const res = await fetch(`/api/buscar-isbn?isbn=${isbn}`);
+          const data = await res.json();
+          if (res.status !== 200 || !data.items || data.items.length === 0) {
+            alert("ISBN não encontrado ou erro na busca.");
+            return;
+          }
+          const livro = data.items[0].volumeInfo;
+          document.getElementById("nome").value = livro.title || "";
+          document.getElementById("autor").value = livro.authors
+            ? livro.authors.join(", ")
+            : "";
+          document.getElementById("data").value = livro.publishedDate
+            ? new Date(livro.publishedDate).toISOString().split("T")[0]
+            : "";
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao buscar ISBN. Verifique sua conexão com a internet.");
+        }
+      }
+
+      async function adicionarLivro() {
+        const estante = document.getElementById("estante").value.trim();
+        const nome = document.getElementById("nome").value.trim();
+        const autor = document.getElementById("autor").value.trim();
+        const data = document.getElementById("data").value;
+        if (!estante || !nome || !autor || !data) {
+          alert("Preencha todos os campos");
+          return;
+        }
+        await fetch("/api/livros/adicionar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ estante, nome, autor, data }),
+        });
+        document.getElementById("formLivro").reset();
+        carregarTabela();
+      }
+
+      async function emprestarLivro(codigo) {
+        // Este botão agora servirá como um atalho para a página de geração de recibo
+        window.location.href = `gerar.html?codigo=${codigo}`;
+      }
+
+      async function devolverLivro(codigo) {
+        const confirmar = confirm(
+          `Deseja realmente devolver o livro de código ${codigo}? Esta ação não gera recibo.`
+        );
+        if (confirmar) {
+          await fetch("/api/livros/atualizar-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              codigo: codigo,
+              status: "Disponível",
+              usuario: "",
+              prazo: "",
+            }),
+          });
+          carregarTabela();
+        }
+      }
+
+
+      document.getElementById("formLivro").addEventListener("submit", (e) => {
+        e.preventDefault();
+        adicionarLivro();
+      });
+
+      if (navigator.onLine) {
+        carregarTabela();
+      }
+    </script>
+  </body>
+</html>

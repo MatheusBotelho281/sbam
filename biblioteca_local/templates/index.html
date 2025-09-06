@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Biblioteca Amor Divino</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        background: #f0f4f8;
+        color: #333;
+        padding: 0 10px;
+        transition: background 0.3s, color 0.3s;
+      }
+
+      /* Header */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        position: relative;
+      }
+      header img {
+        max-width: 70px;
+        margin: 0 15px;
+      }
+      header h1 {
+        font-size: 1.8rem;
+        color: #2196f3;
+      }
+
+      /* Botão modo noturno */
+      #darkModeBtn {
+        position: absolute;
+        left: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #2196f3;
+        border: none;
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition: background 0.3s;
+      }
+      #darkModeBtn:hover {
+        background: #1976d2;
+      }
+
+      /* Top bar */
+      .top-bar {
+        text-align: center;
+        margin-bottom: 15px;
+      }
+      .top-bar button {
+        background: #4caf50;
+        color: #fff;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+      .top-bar button:hover {
+        background: #45a049;
+      }
+
+      /* Tabela */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 30px;
+      }
+      th,
+      td {
+        padding: 12px 10px;
+        text-align: center;
+      }
+      th {
+        background: #2196f3;
+        color: #fff;
+        font-weight: 600;
+      }
+      tbody tr:nth-child(even) {
+        background: #f9f9f9;
+      }
+      tbody tr:hover {
+        background: #e3f2fd;
+      }
+
+      input[type="text"] {
+        width: 100px;
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+      }
+      button {
+        border-radius: 5px;
+        border: none;
+        padding: 6px 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      button:hover {
+        opacity: 0.9;
+      }
+
+      .atrasado {
+        color: red;
+        font-weight: bold;
+      }
+
+      #offlineIndicator {
+        display: none;
+        text-align: center;
+        padding: 10px;
+        background-color: #ffeb3b;
+        color: #333;
+        font-weight: bold;
+      }
+
+      /* Dark Mode */
+      body.dark {
+        background: #1e1e2f;
+        color: #f5f5f5;
+      }
+      body.dark table {
+        background: #2a2a3d;
+      }
+      body.dark th {
+        background: #3a3a5c;
+        color: #fff;
+      }
+      body.dark tbody tr:nth-child(even) {
+        background: #262636;
+      }
+      body.dark tbody tr:hover {
+        background: #3a3a5c;
+      }
+      body.dark input {
+        background: #3a3a5c;
+        color: #fff;
+        border: 1px solid #555;
+      }
+      body.dark button {
+        background: #2196f3;
+        color: #fff;
+      }
+
+      /* Responsividade */
+      @media (max-width: 768px) {
+        th,
+        td {
+          font-size: 0.85rem;
+          padding: 8px;
+        }
+        input[type="text"] {
+          width: 80px;
+          font-size: 0.8rem;
+        }
+        header h1 {
+          font-size: 1.4rem;
+        }
+        #darkModeBtn {
+          padding: 6px 10px;
+          font-size: 0.9rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        table,
+        thead,
+        tbody,
+        th,
+        td,
+        tr {
+          display: block;
+        }
+        thead {
+          display: none;
+        }
+        tr {
+          margin-bottom: 15px;
+          border-bottom: 1px solid #ccc;
+        }
+        td {
+          text-align: right;
+          padding-left: 50%;
+          position: relative;
+        }
+        td::before {
+          content: attr(data-label);
+          position: absolute;
+          left: 10px;
+          font-weight: bold;
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <button id="darkModeBtn">🌞</button>
+      <img src="/static/images/seminario.png" alt="Logo Biblioteca Amor Divino">
+      <h1>Catálogo de Livros</h1>
+    </header>
+
+    <div class="top-bar">
+      <button onclick="window.location='login.html'">Administração</button>
+    </div>
+
+    <div id="offlineIndicator">
+      Você está visualizando uma versão offline do catálogo. As informações
+      podem estar desatualizadas e as ações estão desabilitadas.
+    </div>
+
+    <table id="catalogo">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Autor</th>
+          <th>Estante</th>
+          <th>Status</th>
+          <th>Prazo</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const API_URL = "/api/livros";
+      const offlineIndicator = document.getElementById("offlineIndicator");
+
+      // Dark Mode com ícones alternando
+      const darkModeBtn = document.getElementById("darkModeBtn");
+      function updateDarkModeIcon() {
+        darkModeBtn.textContent = document.body.classList.contains("dark")
+          ? "🌙"
+          : "🌞";
+      }
+      if (localStorage.getItem("darkMode") === "true") {
+        document.body.classList.add("dark");
+        updateDarkModeIcon();
+      }
+      darkModeBtn.onclick = () => {
+        document.body.classList.toggle("dark");
+        localStorage.setItem(
+          "darkMode",
+          document.body.classList.contains("dark")
+        );
+        updateDarkModeIcon();
+      };
+
+      function formatarDataISO(iso) {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const dia = String(d.getDate()).padStart(2, "0");
+        const mes = String(d.getMonth() + 1).padStart(2, "0");
+        const ano = d.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+      }
+
+      function renderizarTabela(data, isOffline = false) {
+        const tbody = document.querySelector("#catalogo tbody");
+        tbody.innerHTML = "";
+        const hoje = new Date();
+        offlineIndicator.style.display = isOffline ? "block" : "none";
+
+        data.slice(1).forEach((livro) => {
+          const nome = livro[2];
+          const autor = livro[3];
+          const estante = livro[1];
+          const status = livro[5];
+          const prazo = livro[7];
+          const prazoData = prazo ? new Date(prazo) : null;
+          const classePrazo =
+            prazoData && prazoData < hoje && status !== "Disponível"
+              ? "atrasado"
+              : "";
+
+          let acoesHTML = "Indisponível offline";
+          if (!isOffline) {
+            if (status === "Disponível") {
+              acoesHTML = `<input type="text" id="reserva-${livro[0]}" placeholder="Seu nome">
+                         <button onclick="reservar('${livro[0]}')">Reservar</button>`;
+            } else {
+              acoesHTML = "";
+            }
+          }
+
+          tbody.innerHTML += `
+          <tr>
+            <td data-label="Nome">${nome}</td>
+            <td data-label="Autor">${autor}</td>
+            <td data-label="Estante">${estante}</td>
+            <td data-label="Status">${status}</td>
+            <td data-label="Prazo" class="${classePrazo}">${formatarDataISO(
+            prazo
+          )}</td>
+            <td data-label="Ações">${acoesHTML}</td>
+          </tr>`;
+        });
+      }
+
+      function carregarVersaoOffline() {
+        const dadosLocais = localStorage.getItem("catalogoLocal");
+        if (dadosLocais) {
+          const data = JSON.parse(dadosLocais);
+          renderizarTabela(data, true);
+        } else {
+          offlineIndicator.innerHTML =
+            "Você está offline e não há catálogo local salvo. Conecte-se à internet para carregar os dados.";
+          offlineIndicator.style.display = "block";
+          document.querySelector("#catalogo tbody").innerHTML =
+            '<tr><td colspan="6">Não foi possível carregar os dados.</td></tr>';
+        }
+      }
+
+      async function carregarCatalogo() {
+        if (navigator.onLine) {
+          try {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            localStorage.setItem("catalogoLocal", JSON.stringify(data));
+            renderizarTabela(data, false);
+          } catch (err) {
+            console.error(
+              "Falha ao buscar dados online, carregando versão offline.",
+              err
+            );
+            carregarVersaoOffline();
+          }
+        } else {
+          carregarVersaoOffline();
+        }
+      }
+
+      async function reservar(codigo) {
+        const usuario = document
+          .getElementById("reserva-" + codigo)
+          .value.trim();
+        if (!usuario) {
+          alert("Digite seu nome!");
+          return;
+        }
+        await fetch("/api/livros/atualizar-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            codigo: codigo,
+            status: "Reservado",
+            usuario: usuario,
+          }),
+        });
+        carregarCatalogo();
+      }
+    </script>
+  </body>
+</html>

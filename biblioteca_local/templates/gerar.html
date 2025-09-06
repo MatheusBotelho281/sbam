@@ -2,7 +2,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <title>Gerar Recibo de Devolução - Biblioteca</title>
+    <title>Gerar Recibo de Empréstimo - Biblioteca</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -21,12 +21,12 @@
         border: 1px solid #ccc;
       }
       button {
-        background: #f44336;
+        background: #4caf50;
         color: white;
         cursor: pointer;
       }
       button:hover {
-        background: #d32f2f;
+        background: #45a049;
       }
       #listaLivros {
         margin-top: 20px;
@@ -87,7 +87,7 @@
     </style>
   </head>
   <body>
-    <h1>Gerar Recibo de Devolução</h1>
+    <h1>Gerar Recibo de Empréstimo</h1>
 
     <label for="usuarioInput">Nome do Usuário:</label>
     <input
@@ -98,7 +98,7 @@
 
     <br /><br />
 
-    <label for="codigoInput">Digite o código do livro para devolução:</label>
+    <label for="codigoInput">Digite o código do livro:</label>
     <input type="text" id="codigoInput" placeholder="Ex: LIV123456" />
     <button onclick="adicionarLivro()">Adicionar</button>
 
@@ -126,7 +126,7 @@
 
     <div class="imprimir" style="display: none">
       <button onclick="imprimirContrato()">
-        Imprimir Recibo e Registrar Devoluções
+        Imprimir Recibo e Registrar Empréstimos
       </button>
     </div>
 
@@ -134,12 +134,13 @@
       const API_URL = "/api/livros";
       let livros = [];
       let listaRecibo = [];
+      let prazoGlobal = null;
 
       async function carregarLivros() {
         try {
           const res = await fetch(API_URL);
           const data = await res.json();
-          livros = data.slice(1); // Ignora cabeçalho
+          livros = data.slice(1);
         } catch (err) {
           console.error("Erro ao carregar livros:", err);
         }
@@ -157,15 +158,23 @@
           return;
         }
 
-        const status = livro[5]?.toLowerCase(); // Status atual (ajustado para coluna correta)
-        if (status !== "emprestado") {
-          alert("Este livro não pode ser devolvido (status: " + livro[5] + ")");
+        const status = livro[5]?.toLowerCase();
+        if (status !== "disponível" && status !== "reservado") {
+          alert(
+            "Este livro não pode ser emprestado (status: " + livro[5] + ")"
+          );
           return;
         }
 
         if (listaRecibo.some((l) => l[0] === codigo)) {
           alert("Livro já adicionado!");
           return;
+        }
+
+        if (!prazoGlobal) {
+          const hoje = new Date();
+          prazoGlobal = new Date();
+          prazoGlobal.setDate(hoje.getDate() + 7);
         }
 
         listaRecibo.push(livro);
@@ -175,6 +184,7 @@
 
       function removerLivro(codigo) {
         listaRecibo = listaRecibo.filter((l) => l[0] !== codigo);
+        if (listaRecibo.length === 0) prazoGlobal = null;
         atualizarTabelaLista();
       }
 
@@ -210,7 +220,7 @@
         contratoWrapper.style.display = "block";
         contratoWrapper.innerHTML = "";
 
-        let contratosHTML = `<div class="contrato"><h2>Recibo de Devolução de Livros</h2>`;
+        let contratosHTML = `<div class="contrato"><h2>Recibo de Empréstimo de Livros</h2>`;
         contratosHTML += `<div class="campo"><strong>Usuário:</strong> ${usuario}</div>`;
 
         listaRecibo.forEach((livro) => {
@@ -222,6 +232,11 @@
           <hr>
         `;
         });
+
+        const prazoTexto = prazoGlobal
+          ? prazoGlobal.toLocaleDateString("pt-BR")
+          : "___________________";
+        contratosHTML += `<div class="campo"><strong>Data de Devolução:</strong> ${prazoTexto}</div>`;
 
         contratosHTML += `
           <div class="assinatura">
@@ -243,11 +258,11 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              action: "updateStatus",
+              action: "updateStatus", // Mantido para compatibilidade conceitual
               codigos: codigos,
-              usuario: "",
-              status: "Disponível",
-              prazo: "",
+              usuario: usuario,
+              status: "Emprestado",
+              prazo: prazoGlobal.toISOString().split("T")[0],
             }),
           });
           window.print();

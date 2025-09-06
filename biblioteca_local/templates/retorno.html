@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerar Recibo de Devolução - Biblioteca</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; }
+    input, button { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #ccc; }
+    button { background: #f44336; color: white; cursor: pointer; }
+    button:hover { background: #d32f2f; }
+    #listaLivros { margin-top: 20px; }
+    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f2f2f2; color: #333; }
+    .contrato { background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.2); margin-top: 20px; }
+    .campo { margin: 5px 0; }
+    .assinatura { margin-top: 50px; }
+    .assinatura-line { border-top: 1px solid #000; width: 200px; margin-top: 50px; }
+    .imprimir { margin-top: 20px; text-align: center; }
+
+    @media print {
+      body * { visibility: hidden; }
+      .contrato, .contrato * { visibility: visible; }
+      .contrato { position: absolute; top: 0; left: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Gerar Recibo de Devolução</h1>
+
+  <label for="usuarioInput">Nome do Usuário:</label>
+  <input type="text" id="usuarioInput" placeholder="Digite o nome do usuário">
+
+  <br><br>
+
+  <label for="codigoInput">Digite o código do livro para devolução:</label>
+  <input type="text" id="codigoInput" placeholder="Ex: LIV123456">
+  <button onclick="adicionarLivro()">Adicionar</button>
+
+  <div id="listaLivros">
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Estante</th>
+          <th>Nome</th>
+          <th>Autor</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaLista"></tbody>
+    </table>
+  </div>
+
+  <div id="contratoWrapper" class="contrato-wrapper" style="display:none;"></div>
+
+  <div class="imprimir" style="display:none;">
+    <button onclick="imprimirContrato()">Imprimir Recibo e Registrar Devoluções</button>
+  </div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
+    let livros = [];
+    let listaRecibo = [];
+
+    async function carregarLivros() {
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        livros = data.slice(1); // Ignora cabeçalho
+      } catch(err) {
+        console.error("Erro ao carregar livros:", err);
+      }
+    }
+
+    function adicionarLivro() {
+      const codigo = document.getElementById("codigoInput").value.trim();
+      if(!codigo){ alert("Digite um código!"); return; }
+      const livro = livros.find(l => l[0] === codigo);
+      if(!livro){ alert("Código não encontrado!"); return; }
+
+      const status = livro[5]?.toLowerCase(); // Status atual (ajustado para coluna correta)
+      if(status !== "emprestado"){ 
+        alert("Este livro não pode ser devolvido (status: " + livro[5] + ")");
+        return;
+      }
+
+      if(listaRecibo.some(l => l[0] === codigo)){ alert("Livro já adicionado!"); return; }
+
+      listaRecibo.push(livro);
+      atualizarTabelaLista();
+      document.getElementById("codigoInput").value = "";
+    }
+
+    function removerLivro(codigo){
+      listaRecibo = listaRecibo.filter(l => l[0] !== codigo);
+      atualizarTabelaLista();
+    }
+
+    function atualizarTabelaLista(){
+      const tbody = document.getElementById("tabelaLista");
+      tbody.innerHTML = "";
+      listaRecibo.forEach(livro => {
+        tbody.innerHTML += `
+          <tr>
+            <td>${livro[0]}</td>
+            <td>${livro[1]}</td>
+            <td>${livro[2]}</td>
+            <td>${livro[3]}</td>
+            <td>${livro[5]}</td>
+            <td><button onclick="removerLivro('${livro[0]}')">Remover</button></td>
+          </tr>
+        `;
+      });
+    }
+
+    async function gerarContrato() {
+      const usuario = document.getElementById("usuarioInput").value.trim();
+      if(!usuario){ alert("Digite o nome do usuário!"); return; }
+      if(listaRecibo.length === 0){ alert("Adicione pelo menos um livro!"); return; }
+
+      const contratoWrapper = document.getElementById("contratoWrapper");
+      contratoWrapper.style.display = "block";
+      contratoWrapper.innerHTML = "";
+
+      let contratosHTML = `<div class="contrato"><h2>Recibo de Devolução de Livros</h2>`;
+      contratosHTML += `<div class="campo"><strong>Usuário:</strong> ${usuario}</div>`;
+
+      listaRecibo.forEach(livro => {
+        contratosHTML += `
+          <div class="campo"><strong>Livro:</strong> ${livro[2]}</div>
+          <div class="campo"><strong>Autor:</strong> ${livro[3]}</div>
+          <div class="campo"><strong>Código:</strong> ${livro[0]}</div>
+          <div class="campo"><strong>Estante:</strong> ${livro[1]}</div>
+          <hr>
+        `;
+      });
+
+      contratosHTML += `
+          <div class="assinatura">
+            Assinatura do usuário:
+            <div class="assinatura-line"></div>
+          </div>
+          <div class="assinatura">
+            Assinatura do responsável pela biblioteca:
+            <div class="assinatura-line"></div>
+          </div>
+        </div>`;
+
+      contratoWrapper.innerHTML = contratosHTML;
+      document.querySelector('.imprimir').style.display = "block";
+
+      document.querySelector('.imprimir button').onclick = async function(){
+        for (const livro of listaRecibo) {
+          await fetch(API_URL, {
+            method: "POST",
+            body: JSON.stringify({
+              action: "updateStatus",
+              codigo: livro[0],
+              usuario: "",
+              status: "Disponível",
+              prazo: ""
+            })
+          });
+        }
+        window.print();
+      };
+    }
+
+    document.getElementById("codigoInput").addEventListener("keydown", function(e){
+      if(e.key === "Enter"){
+        e.preventDefault();
+        adicionarLivro();
+      }
+    });
+
+    carregarLivros();
+  </script>
+
+  <button onclick="gerarContrato()">Gerar Recibo</button>
+</body>
+</html>
