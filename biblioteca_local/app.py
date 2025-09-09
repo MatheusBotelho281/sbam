@@ -86,4 +86,4 @@ def buscar_isbn():
         return jsonify({"error": f"Erro ao contatar a API do Google Books: {e}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=9991)
