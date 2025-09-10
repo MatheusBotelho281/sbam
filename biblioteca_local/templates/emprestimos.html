@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Relatório de Empréstimos - Biblioteca</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; }
+    table { width: 100%; border-collapse: collapse; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #004080; color: white; }
+    tr:nth-child(even) { background-color: #f2f2f2; }
+    tr:hover { background-color: #e2eafc; }
+    .botoes-nav { text-align: center; margin-bottom: 20px; }
+    .botoes-nav a {
+        text-decoration: none;
+        background-color: #004080;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin: 0 5px;
+        transition: background-color 0.3s;
+    }
+    .botoes-nav a:hover { background-color: #0059b3; }
+
+    /* --- Esquema de Cores para Status --- */
+    .status-atrasado { background-color: #ffdddd !important; font-weight: bold; color: #d8000c; }
+    .status-proximo { background-color: #fffbdd !important; color: #9f6000; }
+    .status-normal { background-color: #ddffdd !important; color: #270; }
+  </style>
+</head>
+<body>
+
+  <h1>Relatório de Livros Emprestados</h1>
+
+  <div class="botoes-nav">
+    <a href="/admin.html">Voltar para Administração</a>
+  </div>
+
+  <table id="tabelaEmprestimos">
+    <thead>
+      <tr>
+        <th>Nome do Livro</th>
+        <th>Usuário</th>
+        <th>Data do Empréstimo</th>
+        <th>Prazo de Devolução</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- O conteúdo será preenchido pelo JavaScript -->
+    </tbody>
+  </table>
+
+  <script>
+    function formatarData(isoString) {
+      if (!isoString) return 'N/A';
+      // Adiciona um dia para corrigir problemas de fuso horário na conversão
+      const data = new Date(isoString);
+      data.setDate(data.getDate() + 1);
+      return data.toLocaleDateString('pt-BR');
+    }
+
+    async function carregarEmprestimos() {
+      const tbody = document.querySelector("#tabelaEmprestimos tbody");
+      try {
+        const response = await fetch('/api/livros/emprestados');
+        const data = await response.json();
+        
+        const livrosEmprestados = data.livros;
+        // Pega a data atual do servidor para evitar problemas de fuso horário do cliente
+        const hoje = new Date(data.server_date + 'T00:00:00'); 
+
+        tbody.innerHTML = ""; // Limpa a tabela
+
+        if (livrosEmprestados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Nenhum livro emprestado no momento.</td></tr>';
+            return;
+        }
+
+        livrosEmprestados.forEach(livro => {
+          const prazo = new Date(livro.prazo + 'T00:00:00');
+          
+          let classeStatus = 'status-normal';
+          const diffTime = prazo - hoje;
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          if (diffDays < 0) {
+            classeStatus = 'status-atrasado'; // Atrasado
+          } else if (diffDays <= 2) {
+            classeStatus = 'status-proximo'; // Vencimento próximo (até 2 dias)
+          }
+
+          const tr = document.createElement('tr');
+          tr.className = classeStatus;
+          tr.innerHTML = `
+            <td>${livro.nome}</td>
+            <td>${livro.usuario}</td>
+            <td>${formatarData(livro.data_emprestimo)}</td>
+            <td>${formatarData(livro.prazo)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (err) {
+        console.error("Erro ao carregar relatório de empréstimos:", err);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Falha ao carregar os dados.</td></tr>';
+      }
+    }
+
+    // Carrega o relatório assim que a página é aberta
+    window.onload = carregarEmprestimos;
+  </script>
+
+</body>
+</html>
