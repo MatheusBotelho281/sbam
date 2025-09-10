@@ -29,7 +29,7 @@
 <body>
   <h1>Gerar Recibo de Devolução</h1>
 
-  <label for="usuarioInput">Nome do Usuário:</label>
+  <label for="usuarioInput">Nome do Usuário (para o recibo):</label>
   <input type="text" id="usuarioInput" placeholder="Digite o nome do usuário">
 
   <br><br>
@@ -57,41 +57,57 @@
   <div id="contratoWrapper" class="contrato-wrapper" style="display:none;"></div>
 
   <div class="imprimir" style="display:none;">
-    <button onclick="imprimirContrato()">Imprimir Recibo e Registrar Devoluções</button>
+    <button>Imprimir Recibo e Registrar Devoluções</button>
   </div>
+  
+  <br>
+  <button onclick="gerarContrato()">Gerar Recibo</button>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzNmhkiX1lDbBdp0uh6tOOQZlIeEuvqwtRXhCLxr4caHIV-ToetwTYRcrvyRRlvO7ao/exec";
-    let livros = [];
+    const API_URL = "/api/livros";
+    let todosOsLivros = [];
     let listaRecibo = [];
 
     async function carregarLivros() {
       try {
         const res = await fetch(API_URL);
         const data = await res.json();
-        livros = data.slice(1); // Ignora cabeçalho
+        // Armazena todos os livros (pulando o cabeçalho)
+        todosOsLivros = data.slice(1); 
       } catch(err) {
-        console.error("Erro ao carregar livros:", err);
+        console.error("Erro ao carregar a lista de livros:", err);
+        alert("Não foi possível carregar a lista de livros. Verifique se o servidor está rodando.");
       }
     }
 
     function adicionarLivro() {
-      const codigo = document.getElementById("codigoInput").value.trim();
-      if(!codigo){ alert("Digite um código!"); return; }
-      const livro = livros.find(l => l[0] === codigo);
-      if(!livro){ alert("Código não encontrado!"); return; }
+      const codigoInput = document.getElementById("codigoInput").value;
+      if(!codigoInput){ alert("Digite um código!"); return; }
 
-      const status = livro[5]?.toLowerCase(); // Status atual (ajustado para coluna correta)
+      // **MUDANÇA IMPORTANTE: Busca robusta e insensível a maiúsculas/minúsculas e espaços**
+      const codigoFormatado = codigoInput.toLowerCase().trim();
+      const livro = todosOsLivros.find(l => String(l[0]).toLowerCase().trim() === codigoFormatado);
+
+      if(!livro){ 
+        alert("Código não encontrado!"); 
+        return; 
+      }
+
+      const status = livro[5]?.toLowerCase();
       if(status !== "emprestado"){ 
-        alert("Este livro não pode ser devolvido (status: " + livro[5] + ")");
+        alert("Este livro não pode ser devolvido (Status atual: " + livro[5] + ")");
         return;
       }
 
-      if(listaRecibo.some(l => l[0] === codigo)){ alert("Livro já adicionado!"); return; }
+      if(listaRecibo.some(l => l[0] === livro[0])){ 
+        alert("Este livro já foi adicionado à lista de devolução!"); 
+        return; 
+      }
 
       listaRecibo.push(livro);
       atualizarTabelaLista();
       document.getElementById("codigoInput").value = "";
+      document.getElementById("codigoInput").focus();
     }
 
     function removerLivro(codigo){
@@ -118,15 +134,15 @@
 
     async function gerarContrato() {
       const usuario = document.getElementById("usuarioInput").value.trim();
-      if(!usuario){ alert("Digite o nome do usuário!"); return; }
-      if(listaRecibo.length === 0){ alert("Adicione pelo menos um livro!"); return; }
+      if(!usuario){ alert("Digite o nome do usuário para gerar o recibo!"); return; }
+      if(listaRecibo.length === 0){ alert("Adicione pelo menos um livro à lista!"); return; }
 
       const contratoWrapper = document.getElementById("contratoWrapper");
       contratoWrapper.style.display = "block";
-      contratoWrapper.innerHTML = "";
-
+      
       let contratosHTML = `<div class="contrato"><h2>Recibo de Devolução de Livros</h2>`;
       contratosHTML += `<div class="campo"><strong>Usuário:</strong> ${usuario}</div>`;
+      contratosHTML += `<div class="campo"><strong>Data de Devolução:</strong> ${new Date().toLocaleDateString('pt-BR')}</div><hr>`;
 
       listaRecibo.forEach(livro => {
         contratosHTML += `
@@ -139,10 +155,7 @@
       });
 
       contratosHTML += `
-          <div class="assinatura">
-            Assinatura do usuário:
-            <div class="assinatura-line"></div>
-          </div>
+          <p style="margin-top: 20px;">Recebido em bom estado por:</p>
           <div class="assinatura">
             Assinatura do responsável pela biblioteca:
             <div class="assinatura-line"></div>
@@ -151,23 +164,51 @@
 
       contratoWrapper.innerHTML = contratosHTML;
       document.querySelector('.imprimir').style.display = "block";
-
-      document.querySelector('.imprimir button').onclick = async function(){
-        for (const livro of listaRecibo) {
-          await fetch(API_URL, {
-            method: "POST",
-            body: JSON.stringify({
-              action: "updateStatus",
-              codigo: livro[0],
-              usuario: "",
-              status: "Disponível",
-              prazo: ""
-            })
-          });
-        }
-        window.print();
-      };
     }
+    
+    // **MUDANÇA IMPORTANTE: Lógica de envio para a API local**
+    document.querySelector('.imprimir button').onclick = async function(){
+        if(listaRecibo.length === 0){
+            alert("Nenhum livro na lista para registrar a devolução.");
+            return;
+        }
+
+        const codigosParaDevolver = listaRecibo.map(livro => livro[0]);
+
+        try {
+            const response = await fetch('/api/livros/atualizar-status', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    codigos: codigosParaDevolver,
+                    usuario: "",
+                    status: "Disponível",
+                    prazo: ""
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Falha ao registrar a devolução no servidor.');
+            }
+
+            // Apenas imprime se a atualização no servidor for bem-sucedida
+            window.print();
+            
+            // Limpa a lista e recarrega os dados mestre
+            listaRecibo = [];
+            atualizarTabelaLista();
+            carregarLivros();
+            document.getElementById("contratoWrapper").style.display = "none";
+            document.querySelector('.imprimir').style.display = "none";
+
+        } catch (err) {
+            alert(`Erro: ${err.message}`);
+            console.error("Erro ao registrar devolução: ", err);
+        }
+    };
+
 
     document.getElementById("codigoInput").addEventListener("keydown", function(e){
       if(e.key === "Enter"){
@@ -176,9 +217,9 @@
       }
     });
 
+    // Carrega a lista de todos os livros quando a página é aberta
     carregarLivros();
   </script>
 
-  <button onclick="gerarContrato()">Gerar Recibo</button>
 </body>
 </html>
