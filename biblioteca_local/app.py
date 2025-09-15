@@ -295,7 +295,8 @@ def emprestimos_usuario(usuario_id):
 
         conn_livros = get_db_connection()
         livros = conn_livros.execute(
-            "SELECT codigo, nome, prazo FROM livros WHERE usuario = ?",
+            # AQUI: Adicionamos 'estante' e 'autor' na consulta
+            "SELECT codigo, nome, autor, estante, prazo FROM livros WHERE usuario = ?",
             (usuario['nome'],)
         ).fetchall()
         conn_livros.close()
@@ -304,7 +305,6 @@ def emprestimos_usuario(usuario_id):
     except Exception as e:
         print(f"Erro ao buscar empréstimos do usuário {usuario_id}: {e}")
         return jsonify({"error": "Erro ao buscar empréstimos"}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=9991)

@@ -1,271 +1,163 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Gerar Recibo de Devolução - Biblioteca</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 20px;
-        background: #f5f5f5;
-      }
-      h1 {
-        text-align: center;
-        color: #333;
-      }
-      input,
-      button {
-        padding: 8px;
-        margin: 5px;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-      }
-      button {
-        background: #f44336;
-        color: white;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #d32f2f;
-      }
-      #listaLivros {
-        margin-top: 20px;
-      }
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        background: white;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-      }
-      th,
-      td {
-        border: 1px solid #ddd;
-        padding: 8px;
-        text-align: center;
-      }
-      th {
-        background-color: #f2f2f2;
-        color: #333;
-      }
-      .contrato {
-        background: white;
-        padding: 20px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        margin-top: 20px;
-      }
-      .campo {
-        margin: 5px 0;
-      }
-      .assinatura {
-        margin-top: 50px;
-      }
-      .assinatura-line {
-        border-top: 1px solid #000;
-        width: 200px;
-        margin-top: 50px;
-      }
-      .imprimir {
-        margin-top: 20px;
-        text-align: center;
-      }
+<head>
+  <meta charset="UTF-8">
+  <title>Gerar Recibo de Devolução - Biblioteca</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; }
+    .form-section { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .form-row { display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap; }
+    .form-row label, .form-row select, .form-row input, .form-row button { padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
+    .form-row button { background: #f44336; color: white; cursor: pointer; border: none; }
+    .form-row button:hover { background: #d32f2f; }
+    #livrosEmprestadosContainer { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .livro-item { margin-bottom: 10px; }
+    .imprimir-container { text-align: center; margin-top: 20px; }
+    .btn-imprimir { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
 
-      @media print {
-        body * {
-          visibility: hidden;
-        }
-        .contrato,
-        .contrato * {
-          visibility: visible;
-        }
-        .contrato {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Gerar Recibo de Devolução</h1>
+  <h1>Gerar Recibo de Devolução</h1>
 
-    <label for="usuarioInput">Nome do Usuário:</label>
-    <input
-      type="text"
-      id="usuarioInput"
-      placeholder="Digite o nome do usuário"
-    />
-
-    <br /><br />
-
-    <label for="codigoInput">Digite o código do livro para devolução:</label>
-    <input type="text" id="codigoInput" placeholder="Ex: LIV123456" />
-    <button onclick="adicionarLivro()">Adicionar</button>
-
-    <div id="listaLivros">
-      <table>
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Estante</th>
-            <th>Nome</th>
-            <th>Autor</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaLista"></tbody>
-      </table>
+  <div class="form-section">
+    <h2>Dados da Devolução</h2>
+    <div class="form-row">
+      <label for="usuarioSelect">Selecione o Usuário:</label>
+      <select id="usuarioSelect">
+        <option value="">-- Selecione --</option>
+      </select>
     </div>
-
-    <div
-      id="contratoWrapper"
-      class="contrato-wrapper"
-      style="display: none"
-    ></div>
-
-    <div class="imprimir" style="display: none">
-      <button onclick="imprimirContrato()">
-        Imprimir Recibo e Registrar Devoluções
-      </button>
+    
+    <div id="livrosEmprestadosContainer" style="display: none;">
+      <h3>Livros em posse do usuário:</h3>
+      <div id="listaLivros"></div>
     </div>
+    
+    <div class="imprimir-container">
+      <button onclick="finalizarDevolucao()">Finalizar Devolução</button>
+    </div>
+  </div>
 
-    <script>
-      const API_URL = "/api/livros";
-      let livros = [];
-      let listaRecibo = [];
+  <div id="contratoWrapper" style="display: none; padding: 20px;"></div>
 
-      async function carregarLivros() {
-        try {
-          const res = await fetch(API_URL);
-          const data = await res.json();
-          livros = data.slice(1); // Ignora cabeçalho
-        } catch (err) {
-          console.error("Erro ao carregar livros:", err);
+<script>
+  const API_BASE = '/api/usuarios';
+  const API_LIVROS = '/api/livros';
+  let usuarioSelecionado = null;
+  let livrosEmprestados = [];
+
+  // Função para carregar usuários e popular o select
+  async function carregarUsuariosSelect() {
+    try {
+      const response = await fetch(`${API_BASE}/listar`);
+      const usuarios = await response.json();
+      const select = document.getElementById('usuarioSelect');
+      
+      usuarios.forEach(usuario => {
+        const option = document.createElement('option');
+        option.value = usuario.id;
+        option.textContent = usuario.nome;
+        select.appendChild(option);
+      });
+
+      // Adiciona o evento de mudança ao select
+      select.addEventListener('change', (e) => {
+        const usuarioId = e.target.value;
+        if (usuarioId) {
+          usuarioSelecionado = usuarios.find(u => u.id == usuarioId);
+          carregarLivrosEmprestados(usuarioId);
+        } else {
+          usuarioSelecionado = null;
+          document.getElementById('livrosEmprestadosContainer').style.display = 'none';
         }
+      });
+
+    } catch (error) {
+      console.error('Erro ao carregar usuários:', error);
+      alert('Erro ao carregar a lista de usuários.');
+    }
+  }
+
+  // Função para carregar os livros de um usuário
+  async function carregarLivrosEmprestados(usuarioId) {
+    try {
+      const response = await fetch(`${API_BASE}/emprestimos/${usuarioId}`);
+      livrosEmprestados = await response.json();
+      
+      const container = document.getElementById('livrosEmprestadosContainer');
+      const listaLivros = document.getElementById('listaLivros');
+      listaLivros.innerHTML = '';
+      
+      if (livrosEmprestados.length > 0) {
+        livrosEmprestados.forEach(livro => {
+          const div = document.createElement('div');
+          div.className = 'livro-item';
+          div.innerHTML = `
+            <input type="checkbox" id="livro-${livro.codigo}" value="${livro.codigo}" checked>
+            <label for="livro-${livro.codigo}">${livro.nome} (${livro.codigo})</label>
+          `;
+          listaLivros.appendChild(div);
+        });
+        container.style.display = 'block';
+      } else {
+        listaLivros.innerHTML = '<p>Nenhum livro emprestado por este usuário.</p>';
+        container.style.display = 'block';
       }
 
-      function adicionarLivro() {
-        const codigo = document.getElementById("codigoInput").value.trim();
-        if (!codigo) {
-          alert("Digite um código!");
-          return;
-        }
-        const livro = livros.find((l) => l[0] === codigo);
-        if (!livro) {
-          alert("Código não encontrado!");
-          return;
-        }
+    } catch (error) {
+      console.error('Erro ao carregar livros emprestados:', error);
+      alert('Erro ao carregar a lista de livros.');
+    }
+  }
 
-        const status = livro[5]?.toLowerCase(); // Status atual (ajustado para coluna correta)
-        if (status !== "emprestado") {
-          alert("Este livro não pode ser devolvido (status: " + livro[5] + ")");
-          return;
-        }
+  // Função para finalizar a devolução
+  async function finalizarDevolucao() {
+    const livrosSelecionados = Array.from(document.querySelectorAll('#listaLivros input[type="checkbox"]:checked'));
+    
+    if (livrosSelecionados.length === 0) {
+      alert('Selecione pelo menos um livro para devolver.');
+      return;
+    }
+    
+    if (!confirm(`Deseja realmente devolver ${livrosSelecionados.length} livro(s)?`)) {
+      return;
+    }
 
-        if (listaRecibo.some((l) => l[0] === codigo)) {
-          alert("Livro já adicionado!");
-          return;
-        }
-
-        listaRecibo.push(livro);
-        atualizarTabelaLista();
-        document.getElementById("codigoInput").value = "";
-      }
-
-      function removerLivro(codigo) {
-        listaRecibo = listaRecibo.filter((l) => l[0] !== codigo);
-        atualizarTabelaLista();
-      }
-
-      function atualizarTabelaLista() {
-        const tbody = document.getElementById("tabelaLista");
-        tbody.innerHTML = "";
-        listaRecibo.forEach((livro) => {
-          tbody.innerHTML += `
-          <tr>
-            <td>${livro[0]}</td>
-            <td>${livro[1]}</td>
-            <td>${livro[2]}</td>
-            <td>${livro[3]}</td>
-            <td>${livro[5]}</td>
-            <td><button onclick="removerLivro('${livro[0]}')">Remover</button></td>
-          </tr>
-        `;
+    try {
+      for (const livroCheckbox of livrosSelecionados) {
+        const codigo = livroCheckbox.value;
+        await fetch(`${API_LIVROS}/atualizar-status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            codigo: codigo,
+            status: 'Disponível',
+            usuario: '',
+            prazo: '',
+            data_emprestimo: ''
+          })
         });
       }
+      
+      alert('Devolução(ões) registrada(s) com sucesso!');
+      
+      // Limpa a interface após a devolução
+      document.getElementById('usuarioSelect').value = '';
+      document.getElementById('livrosEmprestadosContainer').style.display = 'none';
+      document.getElementById('listaLivros').innerHTML = '';
+      livrosEmprestados = [];
 
-      async function gerarContrato() {
-        const usuario = document.getElementById("usuarioInput").value.trim();
-        if (!usuario) {
-          alert("Digite o nome do usuário!");
-          return;
-        }
-        if (listaRecibo.length === 0) {
-          alert("Adicione pelo menos um livro!");
-          return;
-        }
+    } catch (error) {
+      console.error('Erro ao finalizar devolução:', error);
+      alert('Erro ao registrar a devolução.');
+    }
+  }
 
-        const contratoWrapper = document.getElementById("contratoWrapper");
-        contratoWrapper.style.display = "block";
-        contratoWrapper.innerHTML = "";
+  // Inicializa o carregamento dos usuários ao carregar a página
+  window.onload = carregarUsuariosSelect;
+</script>
 
-        let contratosHTML = `<div class="contrato"><h2>Recibo de Devolução de Livros</h2>`;
-        contratosHTML += `<div class="campo"><strong>Usuário:</strong> ${usuario}</div>`;
-
-        listaRecibo.forEach((livro) => {
-          contratosHTML += `
-          <div class="campo"><strong>Livro:</strong> ${livro[2]}</div>
-          <div class="campo"><strong>Autor:</strong> ${livro[3]}</div>
-          <div class="campo"><strong>Código:</strong> ${livro[0]}</div>
-          <div class="campo"><strong>Estante:</strong> ${livro[1]}</div>
-          <hr>
-        `;
-        });
-
-        contratosHTML += `
-          <div class="assinatura">
-            Assinatura do usuário:
-            <div class="assinatura-line"></div>
-          </div>
-          <div class="assinatura">
-            Assinatura do responsável pela biblioteca:
-            <div class="assinatura-line"></div>
-          </div>
-        </div>`;
-
-        contratoWrapper.innerHTML = contratosHTML;
-        document.querySelector(".imprimir").style.display = "block";
-
-        document.querySelector(".imprimir button").onclick = async function () {
-          const codigos = listaRecibo.map((livro) => livro[0]);
-          await fetch("/api/livros/atualizar-status", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "updateStatus",
-              codigos: codigos,
-              usuario: "",
-              status: "Disponível",
-              prazo: "",
-            }),
-          });
-          window.print();
-        };
-      }
-
-      document
-        .getElementById("codigoInput")
-        .addEventListener("keydown", function (e) {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            adicionarLivro();
-          }
-        });
-
-      carregarLivros();
-    </script>
-
-    <button onclick="gerarContrato()">Gerar Recibo</button>
-  </body>
+</body>
 </html>
