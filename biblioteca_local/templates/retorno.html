@@ -6,17 +6,52 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
     h1 { text-align: center; color: #333; }
-    input, button { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #ccc; }
+
+    input, button, select {
+      padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #ccc;
+    }
+
     button { background: #f44336; color: white; cursor: pointer; }
     button:hover { background: #d32f2f; }
+
+    .btn-whatsapp { background: #25D366; color: white; }
+    .btn-whatsapp:hover { background: #128C7E; }
+
+    .form-section {
+      background: white; padding: 20px; border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;
+    }
+
+    .form-row {
+      display: flex; gap: 10px; margin-bottom: 15px;
+      align-items: center; flex-wrap: wrap;
+    }
+
+    .usuario-info {
+      background: #e3f2fd; padding: 10px; border-radius: 5px; margin-top: 10px;
+    }
+
+    .sugestoes-usuario {
+      background: white; border: 1px solid #ddd; border-radius: 4px;
+      max-height: 200px; overflow-y: auto; position: absolute; z-index: 1000;
+      width: 300px; display: none;
+    }
+    .sugestao-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .sugestao-item:hover { background-color: #f5f5f5; }
+
     #listaLivros { margin-top: 20px; }
-    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+    table {
+      border-collapse: collapse; width: 100%; background: white;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+    }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     th { background-color: #f2f2f2; color: #333; }
+
     .contrato { background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.2); margin-top: 20px; }
     .campo { margin: 5px 0; }
     .assinatura { margin-top: 50px; }
     .assinatura-line { border-top: 1px solid #000; width: 200px; margin-top: 50px; }
+
     .imprimir { margin-top: 20px; text-align: center; }
 
     @media print {
@@ -29,11 +64,46 @@
 <body>
   <h1>Gerar Recibo de Devolução</h1>
 
-  <label for="usuarioInput">Nome do Usuário (para o recibo):</label>
-  <input type="text" id="usuarioInput" placeholder="Digite o nome do usuário">
+  <!-- Seção de seleção do usuário -->
+  <div class="form-section">
+    <h3>Informações do Usuário</h3>
+    
+    <div class="form-row">
+      <label>Tipo de usuário:</label>
+      <select id="tipoUsuario" onchange="alterarTipoUsuario()">
+        <option value="cadastrado">Usuário Cadastrado</option>
+        <option value="manual">Digitar Manualmente</option>
+      </select>
+    </div>
 
-  <br><br>
+    <!-- Para usuário cadastrado -->
+    <div id="secaoUsuarioCadastrado" class="form-row">
+      <label for="selectUsuario">Selecione o usuário:</label>
+      <select id="selectUsuario" onchange="selecionarUsuario()">
+        <option value="">Escolha um usuário...</option>
+      </select>
+      <input type="text" id="buscaUsuario" placeholder="Digite o nome para buscar..." onkeyup="buscarUsuarios()" style="position: relative;">
+      <div id="sugestoesUsuario" class="sugestoes-usuario"></div>
+    </div>
 
+    <!-- Para digitação manual -->
+    <div id="secaoUsuarioManual" class="form-row" style="display: none;">
+      <input type="text" id="usuarioManual" placeholder="Digite o nome do usuário" />
+    </div>
+
+    <!-- Informações do usuário selecionado -->
+    <div id="infoUsuarioSelecionado" class="usuario-info" style="display: none;">
+      <h4>Usuário Selecionado:</h4>
+      <p><strong>Nome:</strong> <span id="nomeUsuarioInfo"></span></p>
+      <p><strong>Etapa Formativa:</strong> <span id="etapaUsuarioInfo"></span></p>
+      <p><strong>Contato:</strong> <span id="contatoUsuarioInfo"></span></p>
+      <button class="btn-whatsapp" id="btnWhatsApp" onclick="abrirWhatsApp()" style="display: none;">
+        📱 Enviar WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <!-- Seção de livros -->
   <label for="codigoInput">Digite o código do livro para devolução:</label>
   <input type="text" id="codigoInput" placeholder="Ex: LIV123456">
   <button onclick="adicionarLivro()">Adicionar</button>
@@ -57,7 +127,10 @@
   <div id="contratoWrapper" class="contrato-wrapper" style="display:none;"></div>
 
   <div class="imprimir" style="display:none;">
-    <button>Imprimir Recibo e Registrar Devoluções</button>
+    <button onclick="finalizarDevolucao()">📄 Imprimir Recibo e Registrar Devoluções</button>
+    <button class="btn-whatsapp" onclick="enviarNotificacaoDevolucao()" style="margin-left: 10px;">
+      📱 Enviar Notificação WhatsApp
+    </button>
   </div>
   
   <br>
@@ -65,49 +138,116 @@
 
   <script>
     const API_URL = "/api/livros";
+    const API_USUARIOS = "/api/usuarios";
     let todosOsLivros = [];
     let listaRecibo = [];
+    let todosUsuarios = [];
+    let usuarioSelecionado = null;
 
     async function carregarLivros() {
       try {
         const res = await fetch(API_URL);
         const data = await res.json();
-        // Armazena todos os livros (pulando o cabeçalho)
-        todosOsLivros = data.slice(1); 
+        todosOsLivros = data.slice(1);
       } catch(err) {
         console.error("Erro ao carregar a lista de livros:", err);
-        alert("Não foi possível carregar a lista de livros. Verifique se o servidor está rodando.");
+        alert("Não foi possível carregar a lista de livros.");
       }
     }
 
+    async function carregarUsuarios() {
+      try {
+        const res = await fetch(`${API_USUARIOS}/listar`);
+        todosUsuarios = await res.json();
+        atualizarSelectUsuarios();
+      } catch (err) {
+        console.error("Erro ao carregar usuários:", err);
+      }
+    }
+
+    function atualizarSelectUsuarios() {
+      const select = document.getElementById('selectUsuario');
+      select.innerHTML = '<option value="">Escolha um usuário...</option>';
+      todosUsuarios.filter(u => u.ativo).forEach(usuario => {
+        select.innerHTML += `<option value="${usuario.id}">${usuario.nome} - ${usuario.etapa_formativa}</option>`;
+      });
+    }
+
+    function alterarTipoUsuario() {
+      const tipo = document.getElementById('tipoUsuario').value;
+      document.getElementById('secaoUsuarioCadastrado').style.display = (tipo === 'cadastrado') ? 'flex' : 'none';
+      document.getElementById('secaoUsuarioManual').style.display = (tipo === 'manual') ? 'flex' : 'none';
+      limparSelecaoUsuario();
+    }
+
+    function selecionarUsuario() {
+      const usuarioId = document.getElementById('selectUsuario').value;
+      if (!usuarioId) { limparSelecaoUsuario(); return; }
+      usuarioSelecionado = todosUsuarios.find(u => u.id == usuarioId);
+      if (usuarioSelecionado) mostrarInfoUsuario();
+    }
+
+    async function buscarUsuarios() {
+      const termo = document.getElementById('buscaUsuario').value.trim();
+      const sugestoes = document.getElementById('sugestoesUsuario');
+      if (termo.length < 2) { sugestoes.style.display = 'none'; return; }
+
+      try {
+        const response = await fetch(`${API_USUARIOS}/buscar-por-nome?termo=${encodeURIComponent(termo)}`);
+        const usuarios = await response.json();
+        if (usuarios.length > 0) {
+          sugestoes.innerHTML = '';
+          usuarios.forEach(usuario => {
+            const div = document.createElement('div');
+            div.className = 'sugestao-item';
+            div.innerHTML = `<strong>${usuario.nome}</strong><br><small>${usuario.etapa_formativa}</small>`;
+            div.onclick = () => {
+              usuarioSelecionado = usuario;
+              document.getElementById('buscaUsuario').value = usuario.nome;
+              sugestoes.style.display = 'none';
+              mostrarInfoUsuario();
+            };
+            sugestoes.appendChild(div);
+          });
+          sugestoes.style.display = 'block';
+        } else sugestoes.style.display = 'none';
+      } catch (err) { console.error('Erro ao buscar usuários:', err); }
+    }
+
+    function mostrarInfoUsuario() {
+      document.getElementById('nomeUsuarioInfo').textContent = usuarioSelecionado.nome;
+      document.getElementById('etapaUsuarioInfo').textContent = usuarioSelecionado.etapa_formativa;
+      document.getElementById('contatoUsuarioInfo').textContent = usuarioSelecionado.numero_contato;
+      document.getElementById('infoUsuarioSelecionado').style.display = 'block';
+      document.getElementById('btnWhatsApp').style.display = 'inline-block';
+    }
+
+    function limparSelecaoUsuario() {
+      usuarioSelecionado = null;
+      document.getElementById('infoUsuarioSelecionado').style.display = 'none';
+      document.getElementById('sugestoesUsuario').style.display = 'none';
+      document.getElementById('selectUsuario').value = '';
+      document.getElementById('buscaUsuario').value = '';
+    }
+
+    function abrirWhatsApp() {
+      if (!usuarioSelecionado) return;
+      const mensagem = encodeURIComponent(`Olá ${usuarioSelecionado.nome}, recebemos a devolução dos seus livros.`);
+      const url = `https://wa.me/${usuarioSelecionado.numero_contato}?text=${mensagem}`;
+      window.open(url, '_blank');
+    }
+
     function adicionarLivro() {
-      const codigoInput = document.getElementById("codigoInput").value;
-      if(!codigoInput){ alert("Digite um código!"); return; }
-
-      // **MUDANÇA IMPORTANTE: Busca robusta e insensível a maiúsculas/minúsculas e espaços**
-      const codigoFormatado = codigoInput.toLowerCase().trim();
-      const livro = todosOsLivros.find(l => String(l[0]).toLowerCase().trim() === codigoFormatado);
-
-      if(!livro){ 
-        alert("Código não encontrado!"); 
-        return; 
-      }
-
+      const codigo = document.getElementById("codigoInput").value.trim().toLowerCase();
+      if(!codigo){ alert("Digite um código!"); return; }
+      const livro = todosOsLivros.find(l => String(l[0]).toLowerCase() === codigo);
+      if(!livro){ alert("Código não encontrado!"); return; }
       const status = livro[5]?.toLowerCase();
-      if(status !== "emprestado"){ 
-        alert("Este livro não pode ser devolvido (Status atual: " + livro[5] + ")");
-        return;
-      }
-
-      if(listaRecibo.some(l => l[0] === livro[0])){ 
-        alert("Este livro já foi adicionado à lista de devolução!"); 
-        return; 
-      }
-
+      if(status !== "emprestado"){ alert("Este livro não pode ser devolvido (Status atual: " + livro[5] + ")"); return; }
+      if(listaRecibo.some(l => l[0] === livro[0])){ alert("Este livro já foi adicionado!"); return; }
       listaRecibo.push(livro);
       atualizarTabelaLista();
       document.getElementById("codigoInput").value = "";
-      document.getElementById("codigoInput").focus();
     }
 
     function removerLivro(codigo){
@@ -127,99 +267,55 @@
             <td>${livro[3]}</td>
             <td>${livro[5]}</td>
             <td><button onclick="removerLivro('${livro[0]}')">Remover</button></td>
-          </tr>
-        `;
+          </tr>`;
       });
     }
 
-    async function gerarContrato() {
-      const usuario = document.getElementById("usuarioInput").value.trim();
-      if(!usuario){ alert("Digite o nome do usuário para gerar o recibo!"); return; }
-      if(listaRecibo.length === 0){ alert("Adicione pelo menos um livro à lista!"); return; }
+    function gerarContrato() {
+      let usuario = '';
+      if (document.getElementById('tipoUsuario').value === 'cadastrado') {
+        if (!usuarioSelecionado) { alert("Selecione um usuário!"); return; }
+        usuario = usuarioSelecionado.nome;
+      } else {
+        usuario = document.getElementById("usuarioManual").value.trim();
+        if (!usuario) { alert("Digite o nome do usuário!"); return; }
+      }
+      if(listaRecibo.length === 0){ alert("Adicione pelo menos um livro!"); return; }
 
       const contratoWrapper = document.getElementById("contratoWrapper");
       contratoWrapper.style.display = "block";
-      
       let contratosHTML = `<div class="contrato"><h2>Recibo de Devolução de Livros</h2>`;
       contratosHTML += `<div class="campo"><strong>Usuário:</strong> ${usuario}</div>`;
       contratosHTML += `<div class="campo"><strong>Data de Devolução:</strong> ${new Date().toLocaleDateString('pt-BR')}</div><hr>`;
-
       listaRecibo.forEach(livro => {
         contratosHTML += `
           <div class="campo"><strong>Livro:</strong> ${livro[2]}</div>
           <div class="campo"><strong>Autor:</strong> ${livro[3]}</div>
           <div class="campo"><strong>Código:</strong> ${livro[0]}</div>
           <div class="campo"><strong>Estante:</strong> ${livro[1]}</div>
-          <hr>
-        `;
+          <hr>`;
       });
-
       contratosHTML += `
-          <p style="margin-top: 20px;">Recebido em bom estado por:</p>
-          <div class="assinatura">
-            Assinatura do responsável pela biblioteca:
-            <div class="assinatura-line"></div>
-          </div>
-        </div>`;
-
+        <p style="margin-top: 20px;">Recebido em bom estado por:</p>
+        <div class="assinatura">
+          Assinatura do responsável pela biblioteca:
+          <div class="assinatura-line"></div>
+        </div></div>`;
       contratoWrapper.innerHTML = contratosHTML;
       document.querySelector('.imprimir').style.display = "block";
     }
-    
-    // **MUDANÇA IMPORTANTE: Lógica de envio para a API local**
-    document.querySelector('.imprimir button').onclick = async function(){
-        if(listaRecibo.length === 0){
-            alert("Nenhum livro na lista para registrar a devolução.");
-            return;
-        }
 
-        const codigosParaDevolver = listaRecibo.map(livro => livro[0]);
+    function finalizarDevolucao() {
+      window.print();
+    }
 
-        try {
-            const response = await fetch('/api/livros/atualizar-status', {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    codigos: codigosParaDevolver,
-                    usuario: "",
-                    status: "Disponível",
-                    prazo: ""
-                })
-            });
+    function enviarNotificacaoDevolucao() {
+      if (!usuarioSelecionado) { alert("Selecione um usuário!"); return; }
+      abrirWhatsApp();
+    }
 
-            if (!response.ok) {
-                throw new Error('Falha ao registrar a devolução no servidor.');
-            }
-
-            // Apenas imprime se a atualização no servidor for bem-sucedida
-            window.print();
-            
-            // Limpa a lista e recarrega os dados mestre
-            listaRecibo = [];
-            atualizarTabelaLista();
-            carregarLivros();
-            document.getElementById("contratoWrapper").style.display = "none";
-            document.querySelector('.imprimir').style.display = "none";
-
-        } catch (err) {
-            alert(`Erro: ${err.message}`);
-            console.error("Erro ao registrar devolução: ", err);
-        }
-    };
-
-
-    document.getElementById("codigoInput").addEventListener("keydown", function(e){
-      if(e.key === "Enter"){
-        e.preventDefault();
-        adicionarLivro();
-      }
-    });
-
-    // Carrega a lista de todos os livros quando a página é aberta
-    carregarLivros();
+    // Carregar dados iniciais
+    window.onload = () => { carregarLivros(); carregarUsuarios(); };
   </script>
-
 </body>
 </html>

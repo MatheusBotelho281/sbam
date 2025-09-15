@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerenciar Usuários - Biblioteca</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; color: #333; margin-bottom: 30px; }
+    
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    .botoes-nav { text-align: center; margin-bottom: 20px; }
+    .botoes-nav a, .botoes-nav button {
+        text-decoration: none;
+        background-color: #004080;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        margin: 0 5px;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        display: inline-block;
+    }
+    .botoes-nav a:hover, .botoes-nav button:hover { background-color: #0059b3; }
+    
+    .form-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    
+    .form-section h3 { color: #004080; margin-bottom: 15px; }
+    
+    .form-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    
+    .form-row input, .form-row select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .form-row input[type="text"] { min-width: 200px; }
+    
+    .form-row button {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    
+    .form-row button:hover { background: #218838; }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    
+    th, td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+        vertical-align: top;
+    }
+    
+    th {
+        background-color: #004080;
+        color: white;
+        font-weight: 600;
+    }
+    
+    tr:nth-child(even) { background-color: #f8f9fa; }
+    tr:hover { background-color: #e2eafc; }
+    
+    .btn-whatsapp {
+        background: #25D366;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin: 2px;
+        transition: background-color 0.3s;
+    }
+    
+    .btn-whatsapp:hover { background: #128C7E; }
+    
+    .btn-editar {
+        background: #ffc107;
+        color: #212529;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin: 2px;
+    }
+    
+    .btn-excluir {
+        background: #dc3545;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin: 2px;
+    }
+    
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+    
+    .status-ativo { background: #d4edda; color: #155724; }
+    .status-inativo { background: #f8d7da; color: #721c24; }
+    
+    .pesquisa {
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .pesquisa input {
+        width: 50%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 16px;
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.5);
+    }
+    
+    .modal-content {
+        background-color: white;
+        margin: 15% auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 500px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close:hover { color: black; }
+    
+    @media (max-width: 768px) {
+        .form-row { flex-direction: column; align-items: stretch; }
+        .pesquisa input { width: 90%; }
+        .modal-content { width: 95%; margin: 10% auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gerenciar Usuários da Biblioteca</h1>
+
+    <div class="botoes-nav">
+      <a href="/admin.html">Voltar para Administração</a>
+      <button onclick="inicializarBancoUsuarios()">Inicializar Banco de Usuários</button>
+    </div>
+
+    <!-- Formulário para adicionar usuário -->
+    <div class="form-section">
+      <h3>Adicionar Novo Usuário</h3>
+      <form id="formUsuario">
+        <div class="form-row">
+          <input type="text" id="nomeUsuario" placeholder="Nome completo" required>
+          <input type="text" id="etapaFormativa" placeholder="Etapa Formativa (ex: 1º Ano Filosofia)" required>
+          <input type="text" id="numeroContato" placeholder="Número WhatsApp (ex: 5511999999999)" required>
+          <button type="submit">Adicionar Usuário</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Campo de pesquisa -->
+    <div class="pesquisa">
+      <input
+        type="text"
+        id="campoPesquisaUsuarios"
+        placeholder="Pesquisar por nome, etapa formativa ou número..."
+        onkeyup="filtrarUsuarios()"
+      />
+    </div>
+
+    <!-- Tabela de usuários -->
+    <table id="tabelaUsuarios">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Etapa Formativa</th>
+          <th>Empréstimos</th>
+          <th>Número de Contato</th>
+          <th>Status</th>
+          <th>Data Cadastro</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- Seção para notificações -->
+    <div class="form-section">
+      <h3>Enviar Notificação por WhatsApp</h3>
+      <div class="form-row">
+        <select id="usuarioSelect">
+          <option value="">Selecione um usuário...</option>
+        </select>
+        <select id="tipoNotificacao">
+          <option value="emprestimo">Notificação de Empréstimo</option>
+          <option value="vencimento">Lembrete de Vencimento</option>
+          <option value="atraso">Aviso de Atraso</option>
+          <option value="disponibilidade">Livro Disponível</option>
+        </select>
+        <input type="text" id="codigoLivroNotif" placeholder="Código do livro (opcional)">
+        <button onclick="enviarNotificacao()">Enviar Notificação</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal para editar usuário -->
+  <div id="modalEdicao" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="fecharModal()">&times;</span>
+      <h3>Editar Usuário</h3>
+      <form id="formEdicao">
+        <input type="hidden" id="editId">
+        <div class="form-row">
+          <input type="text" id="editNome" placeholder="Nome completo" required>
+        </div>
+        <div class="form-row">
+          <input type="text" id="editEtapa" placeholder="Etapa Formativa" required>
+        </div>
+        <div class="form-row">
+          <input type="text" id="editContato" placeholder="Número WhatsApp" required>
+        </div>
+        <div class="form-row">
+          <select id="editStatus">
+            <option value="1">Ativo</option>
+            <option value="0">Inativo</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <button type="submit">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/usuarios';
+    let todosUsuarios = [];
+
+    // Carrega usuários
+    async function carregarUsuarios() {
+      try {
+        const response = await fetch(`${API_BASE}/listar`);
+        const usuarios = await response.json();
+        todosUsuarios = usuarios;
+        renderizarTabelaUsuarios(usuarios);
+        atualizarSelectUsuarios(usuarios);
+      } catch (error) {
+        console.error('Erro ao carregar usuários:', error);
+        document.querySelector('#tabelaUsuarios tbody').innerHTML = 
+          '<tr><td colspan="8" style="text-align:center;">Erro ao carregar usuários</td></tr>';
+      }
+    }
+
+    // Renderiza tabela de usuários
+    function renderizarTabelaUsuarios(usuarios) {
+      const tbody = document.querySelector('#tabelaUsuarios tbody');
+      tbody.innerHTML = '';
+
+      usuarios.forEach(usuario => {
+        const statusBadge = usuario.ativo 
+          ? '<span class="status-badge status-ativo">Ativo</span>'
+          : '<span class="status-badge status-inativo">Inativo</span>';
+
+        const dataFormatada = new Date(usuario.data_cadastro).toLocaleDateString('pt-BR');
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${usuario.id}</td>
+          <td>${usuario.nome}</td>
+          <td>${usuario.etapa_formativa}</td>
+          <td id="emprestimos-${usuario.id}">Carregando...</td>
+          <td>${usuario.numero_contato}</td>
+          <td>${statusBadge}</td>
+          <td>${dataFormatada}</td>
+          <td>
+            <button class="btn-whatsapp" onclick="abrirWhatsApp('${usuario.numero_contato}', '${usuario.nome}')">
+              WhatsApp
+            </button>
+            <button class="btn-editar" onclick="editarUsuario(${usuario.id})">
+              Editar
+            </button>
+            <button class="btn-excluir" onclick="excluirUsuario(${usuario.id}, '${usuario.nome}')">
+              Excluir
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Buscar os empréstimos via API
+        fetch(`/api/usuarios/emprestimos/${usuario.id}`)
+          .then(res => res.json())
+          .then(livros => {
+            const td = document.getElementById(`emprestimos-${usuario.id}`);
+            if (livros.length === 0) {
+              td.textContent = 'Nenhum';
+            } else {
+              td.innerHTML = livros.map(l => `${l.nome} (${l.codigo})`).join('<br>');
+            }
+          })
+          .catch(err => {
+            document.getElementById(`emprestimos-${usuario.id}`).textContent = 'Erro';
+            console.error(err);
+          });
+      });
+    }
+
+    // Atualiza select de usuários
+    function atualizarSelectUsuarios(usuarios) {
+      const select = document.getElementById('usuarioSelect');
+      select.innerHTML = '<option value="">Selecione um usuário...</option>';
+      
+      usuarios.filter(u => u.ativo).forEach(usuario => {
+        select.innerHTML += `<option value="${usuario.id}" data-contato="${usuario.numero_contato}" data-nome="${usuario.nome}">${usuario.nome} - ${usuario.etapa_formativa}</option>`;
+      });
+    }
+
+    // Adiciona usuário
+    document.getElementById('formUsuario').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const dados = {
+        nome: document.getElementById('nomeUsuario').value.trim(),
+        etapa_formativa: document.getElementById('etapaFormativa').value.trim(),
+        numero_contato: document.getElementById('numeroContato').value.trim()
+      };
+
+      if (!dados.nome || !dados.etapa_formativa || !dados.numero_contato) {
+        alert('Preencha todos os campos!');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/adicionar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
+
+        if (response.ok) {
+          document.getElementById('formUsuario').reset();
+          carregarUsuarios();
+          alert('Usuário adicionado com sucesso!');
+        } else {
+          alert('Erro ao adicionar usuário');
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao adicionar usuário');
+      }
+    });
+
+    // Filtrar usuários
+    function filtrarUsuarios() {
+      const filtro = document.getElementById('campoPesquisaUsuarios').value.toLowerCase();
+      const usuariosFiltrados = todosUsuarios.filter(usuario => 
+        usuario.nome.toLowerCase().includes(filtro) ||
+        usuario.etapa_formativa.toLowerCase().includes(filtro) ||
+        usuario.numero_contato.includes(filtro)
+      );
+      renderizarTabelaUsuarios(usuariosFiltrados);
+    }
+
+    // Abrir WhatsApp
+    function abrirWhatsApp(numero, nome) {
+      const mensagem = encodeURIComponent(`Olá ${nome}, este é um contato da Biblioteca Amor Divino.`);
+      const url = `https://wa.me/${numero}?text=${mensagem}`;
+      window.open(url, '_blank');
+    }
+
+    // Editar usuário
+    async function editarUsuario(id) {
+      const usuario = todosUsuarios.find(u => u.id === id);
+      if (!usuario) return;
+
+      document.getElementById('editId').value = usuario.id;
+      document.getElementById('editNome').value = usuario.nome;
+      document.getElementById('editEtapa').value = usuario.etapa_formativa;
+      document.getElementById('editContato').value = usuario.numero_contato;
+      document.getElementById('editStatus').value = usuario.ativo ? '1' : '0';
+      
+      document.getElementById('modalEdicao').style.display = 'block';
+    }
+
+    // Fechar modal
+    function fecharModal() {
+      document.getElementById('modalEdicao').style.display = 'none';
+    }
+
+    // Salvar edição
+    document.getElementById('formEdicao').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('editId').value;
+      const dados = {
+        nome: document.getElementById('editNome').value.trim(),
+        etapa_formativa: document.getElementById('editEtapa').value.trim(),
+        numero_contato: document.getElementById('editContato').value.trim(),
+        ativo: document.getElementById('editStatus').value === '1'
+      };
+
+      try {
+        const response = await fetch(`${API_BASE}/editar/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
+
+        if (response.ok) {
+          fecharModal();
+          carregarUsuarios();
+          alert('Usuário atualizado com sucesso!');
+        } else {
+          alert('Erro ao atualizar usuário');
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao atualizar usuário');
+      }
+    });
+
+    // Excluir usuário
+    async function excluirUsuario(id, nome) {
+      if (!confirm(`Tem certeza que deseja excluir o usuário "${nome}"?`)) return;
+
+      try {
+        const response = await fetch(`${API_BASE}/excluir/${id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          carregarUsuarios();
+          alert('Usuário excluído com sucesso!');
+        } else {
+          alert('Erro ao excluir usuário');
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao excluir usuário');
+      }
+    }
+
+    // Enviar notificação
+    async function enviarNotificacao() {
+      const usuarioId = document.getElementById('usuarioSelect').value;
+      const tipoNotificacao = document.getElementById('tipoNotificacao').value;
+      const codigoLivro = document.getElementById('codigoLivroNotif').value.trim();
+
+      if (!usuarioId) {
+        alert('Selecione um usuário!');
+        return;
+      }
+
+      const usuarioOption = document.querySelector(`#usuarioSelect option[value="${usuarioId}"]`);
+      const nomeUsuario = usuarioOption.getAttribute('data-nome');
+      const numeroContato = usuarioOption.getAttribute('data-contato');
+
+      // Gera mensagem baseada no tipo
+      let mensagem = '';
+      switch (tipoNotificacao) {
+        case 'emprestimo':
+          mensagem = `Olá ${nomeUsuario}, confirmamos o empréstimo do livro${codigoLivro ? ` (código: ${codigoLivro})` : ''}. Lembre-se da data de devolução. - Biblioteca Amor Divino`;
+          break;
+        case 'vencimento':
+          mensagem = `Olá ${nomeUsuario}, lembramos que seu empréstimo${codigoLivro ? ` do livro ${codigoLivro}` : ''} vence em breve. Por favor, renove ou devolva. - Biblioteca Amor Divino`;
+          break;
+        case 'atraso':
+          mensagem = `Olá ${nomeUsuario}, seu empréstimo${codigoLivro ? ` do livro ${codigoLivro}` : ''} está em atraso. Por favor, regularize sua situação. - Biblioteca Amor Divino`;
+          break;
+        case 'disponibilidade':
+          mensagem = `Olá ${nomeUsuario}, o livro${codigoLivro ? ` ${codigoLivro}` : ''} que você solicitou está disponível para retirada. - Biblioteca Amor Divino`;
+          break;
+      }
+
+      // Registra a notificação no histórico
+      try {
+        await fetch(`${API_BASE}/notificacao`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usuario_id: usuarioId,
+            codigo_livro: codigoLivro,
+            tipo_notificacao: tipoNotificacao
+          })
+        });
+      } catch (error) {
+        console.error('Erro ao registrar notificação:', error);
+      }
+
+      // Abre WhatsApp
+      const url = `https://wa.me/${numeroContato}?text=${encodeURIComponent(mensagem)}`;
+      window.open(url, '_blank');
+
+      // Limpa os campos
+      document.getElementById('usuarioSelect').value = '';
+      document.getElementById('codigoLivroNotif').value = '';
+    }
+
+    // Inicializar banco de usuários
+    async function inicializarBancoUsuarios() {
+      try {
+        const response = await fetch(`${API_BASE}/inicializar`, {
+          method: 'POST'
+        });
+        if (response.ok) {
+          alert('Banco de usuários inicializado com sucesso!');
+          carregarUsuarios();
+        } else {
+          alert('Erro ao inicializar banco de usuários');
+        }
+      } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao inicializar banco de usuários');
+      }
+    }
+
+    // Fecha modal ao clicar fora
+    window.onclick = function(event) {
+      const modal = document.getElementById('modalEdicao');
+      if (event.target === modal) {
+        fecharModal();
+      }
+    }
+
+    // Carrega dados ao iniciar a página
+    window.onload = carregarUsuarios;
+  </script>
+
+</body>
+</html>

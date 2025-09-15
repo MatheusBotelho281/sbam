@@ -106,16 +106,68 @@
           id="usuarioEmprestimo"
           placeholder="Nome do usuário para empréstimo"
         />
+        <a
+          href="usuarios.html"
+          style="
+            display: inline-block;
+            padding: 10px 18px;
+            background-color: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            margin: 5px;
+          "
+          >Gerenciar Usuários</a
+        >
       </div>
 
-    <div class="emprestimo">
-      <a href="gerar.html" style="display: inline-block; padding: 10px 18px; background-color: #28a745; color: white; text-decoration: none; border-radius: 5px; text-align: center; margin: 5px;">Registrar Retirada</a>
-      <a href="retorno.html" style="display: inline-block; padding: 10px 18px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px; text-align: center; margin: 5px;">Registrar Devolução</a>
-      <!-- NOVO LINK ADICIONADO ABAIXO -->
-      <a href="emprestimos.html" style="display: inline-block; padding: 10px 18px; background-color: #ffc107; color: #212529; text-decoration: none; border-radius: 5px; text-align: center; margin: 5px;">Relatório de Empréstimos</a>
+      <div class="emprestimo">
+        <a
+          href="gerar.html"
+          style="
+            display: inline-block;
+            padding: 10px 18px;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            margin: 5px;
+          "
+          >Registrar Retirada</a
+        >
+        <a
+          href="retorno.html"
+          style="
+            display: inline-block;
+            padding: 10px 18px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            margin: 5px;
+          "
+          >Registrar Devolução</a
+        >
+        <!-- NOVO LINK ADICIONADO ABAIXO -->
+        <a
+          href="emprestimos.html"
+          style="
+            display: inline-block;
+            padding: 10px 18px;
+            background-color: #ffc107;
+            color: #212529;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+            margin: 5px;
+          "
+          >Relatório de Empréstimos</a
+        >
+      </div>
     </div>
-
-  </div>
 
     <div
       id="offline-message"
@@ -258,7 +310,6 @@
           carregarTabela();
         }
       }
-
 
       document.getElementById("formLivro").addEventListener("submit", (e) => {
         e.preventDefault();

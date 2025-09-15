@@ -1,4 +1,3 @@
-# app.py
 import sqlite3
 import uuid
 import os
@@ -6,36 +5,29 @@ import sys
 from flask import Flask, jsonify, render_template, request
 import requests
 from datetime import date, timedelta
+import subprocess
 
 # --- CÓDIGO ESSENCIAL PARA O PYINSTALLER ---
-# Determina o caminho base, seja rodando como script ou como executável
 def get_base_path():
     if getattr(sys, 'frozen', False):
-        # Se estiver rodando como um executável do PyInstaller
         return sys._MEIPASS
     else:
-        # Se estiver rodando como um script .py normal
         return os.path.abspath(".")
 
 BASE_PATH = get_base_path()
 # -----------------------------------------
 
-# Modifique a linha de inicialização do Flask para usar o caminho base
 app = Flask(__name__,
             template_folder=os.path.join(BASE_PATH, 'templates'),
             static_folder=os.path.join(BASE_PATH, 'static'))
 
-# Chave da API do Google Books (opcional, para a funcionalidade de ISBN)
-GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs" # Chave da aplicação original
+GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs"
 
 def get_db_connection():
-    # Garante que o banco de dados seja encontrado no mesmo diretório do executável
     db_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'biblioteca.db')
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     return conn
-
-# --- ROTAS DO FRONTEND ---
 
 @app.route('/')
 def index():
@@ -43,17 +35,13 @@ def index():
 
 @app.route('/<path:filename>')
 def serve_html(filename):
-    # Evita que a rota capture caminhos de API ou estáticos
     if filename.startswith('api/') or filename.startswith('static/'):
         return "Not Found", 404
     return render_template(filename)
 
-# --- ROTAS DA API ---
-
 @app.route('/api/livros', methods=['GET'])
 def get_livros():
     conn = get_db_connection()
-    # Adiciona a coluna data_emprestimo na consulta para consistência
     livros_db = conn.execute('SELECT codigo, estante, nome, autor, data_publicacao, status, usuario, prazo, data_emprestimo FROM livros ORDER BY nome').fetchall()
     conn.close()
     
@@ -82,7 +70,6 @@ def add_livro():
     codigo = f"LIV{str(uuid.uuid4().int)[:6]}"
     
     conn = get_db_connection()
-    # Adiciona a coluna data_emprestimo (vazia) na inserção
     conn.execute('INSERT INTO livros (codigo, estante, nome, autor, data_publicacao, status, usuario, prazo, data_emprestimo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                  (codigo, data['estante'], data['nome'], data['autor'], data['data'], 'Disponível', '', '', ''))
     conn.commit()
@@ -130,6 +117,194 @@ def buscar_isbn():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": f"Erro ao contatar a API do Google Books: {e}"}), 500
 
+def get_db_usuarios_connection():
+    db_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), 'usuarios_biblioteca.db')
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.route('/api/usuarios/inicializar', methods=['POST'])
+def inicializar_usuarios():
+    try:
+        result = subprocess.run([sys.executable, 'database_usuarios.py'], 
+                              capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(sys.argv[0])))
+        
+        if result.returncode == 0:
+            return jsonify({"success": True, "message": "Banco de usuários inicializado com sucesso"})
+        else:
+            return jsonify({"success": False, "error": result.stderr}), 500
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/usuarios/listar', methods=['GET'])
+def listar_usuarios():
+    try:
+        conn = get_db_usuarios_connection()
+        usuarios = conn.execute('''
+            SELECT id, nome, etapa_formativa, numero_contato, ativo, data_cadastro 
+            FROM usuarios 
+            ORDER BY nome
+        ''').fetchall()
+        conn.close()
+        
+        usuarios_list = [dict(usuario) for usuario in usuarios]
+        return jsonify(usuarios_list)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/adicionar', methods=['POST'])
+def adicionar_usuario():
+    try:
+        data = request.get_json()
+        nome = data.get('nome', '').strip()
+        etapa_formativa = data.get('etapa_formativa', '').strip()
+        numero_contato = data.get('numero_contato', '').strip()
+        
+        if not all([nome, etapa_formativa, numero_contato]):
+            return jsonify({"error": "Todos os campos são obrigatórios"}), 400
+        
+        conn = get_db_usuarios_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO usuarios (nome, etapa_formativa, numero_contato) 
+            VALUES (?, ?, ?)
+        ''', (nome, etapa_formativa, numero_contato))
+        conn.commit()
+        usuario_id = cursor.lastrowid
+        conn.close()
+        
+        return jsonify({"success": True, "id": usuario_id})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/editar/<int:usuario_id>', methods=['PUT'])
+def editar_usuario(usuario_id):
+    try:
+        data = request.get_json()
+        nome = data.get('nome', '').strip()
+        etapa_formativa = data.get('etapa_formativa', '').strip()
+        numero_contato = data.get('numero_contato', '').strip()
+        ativo = data.get('ativo', True)
+        
+        if not all([nome, etapa_formativa, numero_contato]):
+            return jsonify({"error": "Todos os campos são obrigatórios"}), 400
+        
+        conn = get_db_usuarios_connection()
+        conn.execute('''
+            UPDATE usuarios 
+            SET nome = ?, etapa_formativa = ?, numero_contato = ?, ativo = ?
+            WHERE id = ?
+        ''', (nome, etapa_formativa, numero_contato, ativo, usuario_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/excluir/<int:usuario_id>', methods=['DELETE'])
+def excluir_usuario(usuario_id):
+    try:
+        conn = get_db_usuarios_connection()
+        conn.execute('DELETE FROM usuarios WHERE id = ?', (usuario_id,))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/notificacao', methods=['POST'])
+def registrar_notificacao():
+    try:
+        data = request.get_json()
+        usuario_id = data.get('usuario_id')
+        codigo_livro = data.get('codigo_livro', '')
+        tipo_notificacao = data.get('tipo_notificacao')
+        
+        nome_livro = ''
+        if codigo_livro:
+            conn_livros = get_db_connection()
+            livro = conn_livros.execute('SELECT nome FROM livros WHERE codigo = ?', (codigo_livro,)).fetchone()
+            if livro:
+                nome_livro = livro['nome']
+            conn_livros.close()
+        
+        conn = get_db_usuarios_connection()
+        conn.execute('''
+            INSERT INTO historico_notificacoes 
+            (usuario_id, codigo_livro, nome_livro, tipo_notificacao, status_envio) 
+            VALUES (?, ?, ?, ?, ?)
+        ''', (usuario_id, codigo_livro, nome_livro, tipo_notificacao, 'enviado'))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/historico/<int:usuario_id>', methods=['GET'])
+def historico_notificacoes_usuario(usuario_id):
+    try:
+        conn = get_db_usuarios_connection()
+        historico = conn.execute('''
+            SELECT h.*, u.nome as nome_usuario
+            FROM historico_notificacoes h
+            JOIN usuarios u ON h.usuario_id = u.id
+            WHERE h.usuario_id = ?
+            ORDER BY h.data_envio DESC
+        ''', (usuario_id,)).fetchall()
+        conn.close()
+        
+        historico_list = [dict(item) for item in historico]
+        return jsonify(historico_list)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/buscar-por-nome', methods=['GET'])
+def buscar_usuario_por_nome():
+    termo = request.args.get('termo', '').strip()
+    if not termo:
+        return jsonify([])
+    
+    try:
+        conn = get_db_usuarios_connection()
+        usuarios = conn.execute('''
+            SELECT id, nome, etapa_formativa, numero_contato 
+            FROM usuarios 
+            WHERE ativo = 1 AND nome LIKE ? 
+            ORDER BY nome
+            LIMIT 10
+        ''', (f'%{termo}%',)).fetchall()
+        conn.close()
+        
+        usuarios_list = [dict(usuario) for usuario in usuarios]
+        return jsonify(usuarios_list)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/usuarios/emprestimos/<int:usuario_id>')
+def emprestimos_usuario(usuario_id):
+    try:
+        conn_usuarios = get_db_usuarios_connection()
+        usuario = conn_usuarios.execute("SELECT nome FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
+        conn_usuarios.close()
+
+        if not usuario:
+            return jsonify([]) # Retorna lista vazia se o usuário não for encontrado
+
+        conn_livros = get_db_connection()
+        livros = conn_livros.execute(
+            "SELECT codigo, nome, prazo FROM livros WHERE usuario = ?",
+            (usuario['nome'],)
+        ).fetchall()
+        conn_livros.close()
+        
+        return jsonify([dict(l) for l in livros])
+    except Exception as e:
+        print(f"Erro ao buscar empréstimos do usuário {usuario_id}: {e}")
+        return jsonify({"error": "Erro ao buscar empréstimos"}), 500
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=9991)
-
