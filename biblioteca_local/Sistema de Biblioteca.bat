@@ -27,6 +27,9 @@ echo - Ngrok disponibilizando acesso externo
 echo.
 echo Acesse: http://localhost:9991 para usar o sistema
 echo.
-pause
 
+:: Abrir navegador automaticamente no localhost
+start http://localhost:9991
+
+pause
 exit
