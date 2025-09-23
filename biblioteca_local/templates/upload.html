@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Livro Digital</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        form {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        label, input, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        input[type="file"] {
+            padding: 5px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        /* Adicione este estilo para a tabela */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <form action="/upload-livro-digital" method="post" enctype="multipart/form-data">
+        <h2>Upload de Livro Digital</h2>
+        {% if message %}
+        <div class="message {{ message_type }}">{{ message }}</div>
+        {% endif %}
+        
+        <label for="nome">Nome do Livro:</label>
+        <input type="text" id="nome" name="nome" required>
+
+        <label for="autor">Autor:</label>
+        <input type="text" id="autor" name="autor" required>
+
+        <label for="arquivo">Selecione o arquivo (PDF/EPUB):</label>
+        <input type="file" id="arquivo" name="arquivo" accept=".pdf,.epub" required>
+        
+        <button type="submit">Enviar</button>
+    </form>
+
+    <hr style="margin-top: 40px; margin-bottom: 40px;">
+
+    <h2>Livros Digitais Existentes</h2>
+    {% if livros %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome do Livro</th>
+                    <th>Autor</th>
+                    <th>Tamanho</th>
+                    <th>Formato</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for livro in livros %}
+                <tr>
+                    <td>{{ livro.nome }}</td>
+                    <td>{{ livro.autor }}</td>
+                    <td>{{ livro.tamanho|filesizeformat }}</td>
+                    <td>{{ livro.formato }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Nenhum livro digital cadastrado ainda.</p>
+    {% endif %}
+
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo Digital</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .search-container {
+            margin-bottom: 20px;
+        }
+        .search-container input {
+            padding: 10px;
+            width: 300px;
+        }
+        .download-button {
+            background-color: #008CBA;
+            color: white;
+            padding: 8px 12px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Catálogo de Livros Digitais</h1>
+    <div class="search-container">
+        <input type="text" id="search-input" onkeyup="filterTable()" placeholder="Pesquisar por nome ou autor...">
+    </div>
+    
+    <table id="digital-table">
+        <thead>
+            <tr>
+                <th>Nome do Livro</th>
+                <th>Autor</th>
+                <th>Tamanho</th>
+                <th>Formato</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for livro in livros %}
+            <tr>
+                <td>{{ livro.nome }}</td>
+                <td>{{ livro.autor }}</td>
+                <td>{{ livro.tamanho|filesizeformat }}</td>
+                <td>{{ livro.formato }}</td>
+                <td><a href="/download/{{ livro.codigo }}" class="download-button">Download</a></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5">Nenhum livro digital encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+    function filterTable() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("search-input");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("digital-table");
+        tr = table.getElementsByTagName("tr");
+        for (i = 1; i < tr.length; i++) {
+            tr[i].style.display = "none";
+            td = tr[i].getElementsByTagName("td");
+            for (var j = 0; j < td.length - 1; j++) {
+                if (td[j]) {
+                    txtValue = td[j].textContent || td[j].innerText;
+                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
+                        tr[i].style.display = "";
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    </script>
+</body>
+</html>

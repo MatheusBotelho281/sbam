@@ -82,6 +82,25 @@ def inicializar_banco_usuarios():
     conn.commit()
     conn.close()
 
+def inicializar_banco_acervo():
+    conn = sqlite3.connect('acervo_digital.db')
+    cursor = conn.cursor()
+
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS arquivos_digitais (
+        codigo TEXT PRIMARY KEY,
+        nome TEXT NOT NULL,
+        autor TEXT NOT NULL,
+        caminho_arquivo TEXT NOT NULL,
+        tamanho REAL,
+        formato TEXT
+    )
+    ''')
+
+    conn.commit()
+    conn.close()
+
 if __name__ == '__main__':
+    inicializar_banco_acervo()
     inicializar_banco()
     inicializar_banco_usuarios()

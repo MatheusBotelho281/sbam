@@ -1,11 +1,15 @@
 import sqlite3
+import traceback 
 import uuid
+from werkzeug.utils import secure_filename
 import os
 import sys
 from flask import Flask, jsonify, render_template, request
+from flask import render_template, redirect, url_for, send_from_directory, flash
 import requests
 from datetime import date, timedelta
 import subprocess
+
 
 # --- CÓDIGO ESSENCIAL PARA O PYINSTALLER ---
 def get_base_path():
@@ -20,6 +24,7 @@ BASE_PATH = get_base_path()
 app = Flask(__name__,
             template_folder=os.path.join(BASE_PATH, 'templates'),
             static_folder=os.path.join(BASE_PATH, 'static'))
+app.secret_key = 'uma_chave_secreta_muito_unica_e_segura' 
 
 GOOGLE_API_KEY = "AIzaSyA9gO2r2Vxtx4n0j4WrfgMjDVaPwgKsUWs"
 
@@ -33,11 +38,6 @@ def get_db_connection():
 def index():
     return render_template('index.html')
 
-@app.route('/<path:filename>')
-def serve_html(filename):
-    if filename.startswith('api/') or filename.startswith('static/'):
-        return "Not Found", 404
-    return render_template(filename)
 
 @app.route('/api/livros', methods=['GET'])
 def get_livros():
@@ -305,6 +305,129 @@ def emprestimos_usuario(usuario_id):
     except Exception as e:
         print(f"Erro ao buscar empréstimos do usuário {usuario_id}: {e}")
         return jsonify({"error": "Erro ao buscar empréstimos"}), 500
+
+
+# Configuração para salvar os arquivos
+UPLOAD_FOLDER = 'acervo_digital'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Função para conectar ao banco de dados do acervo
+def get_db_acervo():
+    conn = sqlite3.connect('acervo_digital.db')
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Rota para a página de upload (Admin)
+# Rota para a página de upload (Admin)
+@app.route('/upload-digital')
+def upload_digital_page():
+    conn = get_db_acervo()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM arquivos_digitais ORDER BY nome")
+    livros = cursor.fetchall()
+    conn.close()
+    
+    # Adicione esta linha para verificar o conteúdo da lista
+    print("Livros encontrados no banco de dados:", livros) 
+    
+    return render_template('upload.html', livros=livros)
+# Rota para processar o upload do arquivo
+# Rota para processar o upload do arquivo
+@app.route('/upload-livro-digital', methods=['POST'])
+def upload_livro_digital():
+    if 'arquivo' not in request.files:
+        flash('Nenhum arquivo enviado.', 'error')
+        return redirect(url_for('upload_digital_page'))
+
+    file = request.files['arquivo']
+    nome = request.form['nome']
+    autor = request.form['autor']
+
+    if file.filename == '':
+        flash('Nenhum arquivo selecionado.', 'error')
+        return redirect(url_for('upload_digital_page'))
+    
+    if file and (file.filename.endswith('.pdf') or file.filename.endswith('.epub')):
+        conn = None 
+        try:
+            # Salva o arquivo no servidor
+            original_filename = secure_filename(file.filename)
+            # Use um UUID para um código verdadeiramente único
+            codigo_livro = uuid.uuid4().hex
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], original_filename)
+            file.save(filepath)
+
+            # Insere os dados no banco de dados
+            conn = get_db_acervo()
+            cursor = conn.cursor()
+            
+            tamanho = os.path.getsize(filepath)
+            formato = os.path.splitext(original_filename)[1].replace('.', '')
+
+            cursor.execute("INSERT INTO arquivos_digitais (codigo, nome, autor, caminho_arquivo, tamanho, formato) VALUES (?, ?, ?, ?, ?, ?)",
+                           (codigo_livro, nome, autor, filepath, tamanho, formato))
+            conn.commit()
+            
+            flash('Livro digital enviado com sucesso!', 'success')
+            return redirect(url_for('upload_digital_page'))
+
+        except Exception as e:
+            traceback.print_exc()
+            flash(f'Erro no upload: {e}', 'error')
+            
+            # Se o upload do arquivo falhou, remove o arquivo salvo
+            if 'filepath' in locals() and os.path.exists(filepath):
+                os.remove(filepath)
+            
+            return redirect(url_for('upload_digital_page'))
+        
+        finally:
+            if conn:
+                conn.close()
+
+    flash('Formato de arquivo inválido. Apenas PDF e EPUB são permitidos.', 'error')
+    return redirect(url_for('upload_digital_page'))
+# Rota para a página do catálogo digital
+@app.route('/catalogo-digital')
+def catalogo_digital():
+    # seu código para buscar os livros aqui
+    conn = get_db_acervo()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM arquivos_digitais")
+    livros = cursor.fetchall()
+    conn.close()
+    return render_template('catalogo_digital.html', livros=livros)
+
+@app.template_filter('filesizeformat')
+def filesizeformat_filter(size):
+    if size < 1024:
+        return f"{size} B"
+    elif size < 1024 * 1024:
+        return f"{size / 1024:.2f} KB"
+    elif size < 1024 * 1024 * 1024:
+        return f"{size / (1024 * 1024):.2f} MB"
+    else:
+        return f"{size / (1024 * 1024 * 1024):.2f} GB"
+    
+# Rota para download do arquivo
+@app.route('/download/<codigo>')
+def download_file(codigo):
+    conn = get_db_acervo()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM arquivos_digitais WHERE codigo = ?", (codigo,))
+    livro = cursor.fetchone()
+    conn.close()
+
+    if livro:
+        # Pega o caminho do arquivo e envia para o usuário
+        return send_from_directory(directory=app.config['UPLOAD_FOLDER'], path=os.path.basename(livro['caminho_arquivo']), as_attachment=True)
+    else:
+        flash('Arquivo não encontrado.', 'error')
+        return redirect(url_for('catalogo_digital'))
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=9991)
